@@ -25,7 +25,7 @@ FILE *book_file;
 
 void open_book()
 {
-	srand(time(NULL));
+	srand((unsigned int) time(NULL));
 	book_file = fopen("book.txt", "r");
 	if (!book_file)
 		printf("Opening book missing.\n");
@@ -47,8 +47,8 @@ void close_book()
 
 int book_move()
 {
-	char line[256];
-	char book_line[256];
+	char line[TextLen];
+	char book_line[TextLen];
 	int i, j, m;
 	int move[50];  /* the possible book moves */
 	int count[50];  /* the number of occurrences of each move */
@@ -56,7 +56,7 @@ int book_move()
 	int total_count = 0;
 
 	if (!book_file || hply > 25)
-		return -1;
+		return MvNil;
 
 	/* line is a string with the current line, e.g., "e2e4 e7e5 g1f3 " */
 	line[0] = '\0';
@@ -66,12 +66,12 @@ int book_move()
 
 	/* compare line to each line in the opening book */
 	fseek(book_file, 0, SEEK_SET);
-	while (fgets(book_line, 256, book_file)) {
+	while (fgets(book_line, TextLen, book_file)) {
 		if (book_match(line, book_line)) {
 
 			/* parse the book move that continues the line */
 			m = parse_move(&book_line[strlen(line)]);
-			if (m == -1)
+			if (m == MvNil)
 				continue;
 			m = gen_dat[m].m.u;
 
@@ -93,7 +93,7 @@ int book_move()
 
 	/* no book moves? */
 	if (moves == 0)
-		return -1;
+		return MvNil;
 
 	/* Think of total_count as the set of matching book lines.
 	   Randomly pick one of those lines (j) and figure out which
@@ -104,7 +104,7 @@ int book_move()
 		if (j < 0)
 			return move[i];
 	}
-	return -1;  /* shouldn't get here */
+	return MvNil;  /* shouldn't get here */
 }
 
 

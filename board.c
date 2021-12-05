@@ -12,20 +12,20 @@
 #include "protos.h"
 
 
- /* init_board() sets the board to the initial game state. */
+/* init_board() sets the board to the initial game state. */
 
 void init_board()
 {
-	int i;
+	int sq;
 
-	for (i = 0; i < 64; ++i) {
-		color[i] = init_color[i];
-		piece[i] = init_piece[i];
+	for (sq = 0; sq < SqLen; ++sq) {
+		color[sq] = init_color[sq];
+		piece[sq] = init_piece[sq];
 	}
 	side = LIGHT;
 	xside = DARK;
-	castle = 15;
-	ep = -1;
+	castle = CCall;
+	ep = SqNil;
 	fifty = 0;
 	ply = 0;
 	hply = 0;
@@ -38,16 +38,16 @@ void init_board()
 
 void init_hash()
 {
-	int i, j, k;
+	int colorkind, piecekind, sq;
 
 	srand(0);
-	for (i = 0; i < 2; ++i)
-		for (j = 0; j < 6; ++j)
-			for (k = 0; k < 64; ++k)
-				hash_piece[i][j][k] = hash_rand();
+	for (colorkind = 0; colorkind < ColorLen; ++colorkind)
+		for (piecekind = 0; piecekind < PieceLen; ++piecekind)
+			for (sq = 0; sq < SqLen; ++sq)
+				hash_piece[colorkind][piecekind][sq] = hash_rand();
 	hash_side = hash_rand();
-	for (i = 0; i < 64; ++i)
-		hash_ep[i] = hash_rand();
+	for (sq = 0; sq < SqLen; ++sq)
+		hash_ep[sq] = hash_rand();
 }
 
 
@@ -58,11 +58,11 @@ void init_hash()
 int hash_rand()
 {
 	int i;
-	int r = 0;
+	int result = 0;
 
 	for (i = 0; i < 32; ++i)
-		r ^= rand() << i;
-	return r;
+		result ^= rand() << i;
+	return result;
 }
 
 
@@ -72,23 +72,23 @@ int hash_rand()
    not really unique, but they're unique enough for our purposes (to detect
    repetitions of the position).
    The way it works is to XOR random numbers that correspond to features of
-   the position, e.g., if there's a black knight on B8, hash is XORed with
-   hash_piece[BLACK][KNIGHT][B8]. All of the pieces are XORed together,
+   the position, e.g., if there's a black knight on SqB8, hash is XORed with
+   hash_piece[BLACK][KNIGHT][SqB8]. All of the pieces are XORed together,
    hash_side is XORed if it's black's move, and the en passant square is
    XORed if there is one. (A chess technicality is that one position can't
    be a repetition of another if the en passant state is different.) */
 
 void set_hash()
 {
-	int i;
+	int sq;
 
 	hash = 0;
-	for (i = 0; i < 64; ++i)
-		if (color[i] != EMPTY)
-			hash ^= hash_piece[color[i]][piece[i]][i];
+	for (sq = 0; sq < SqLen; ++sq)
+		if (color[sq] != NoColor)
+			hash ^= hash_piece[color[sq]][piece[sq]][sq];
 	if (side == DARK)
 		hash ^= hash_side;
-	if (ep != -1)
+	if (ep != SqNil)
 		hash ^= hash_ep[ep];
 }
 
@@ -99,12 +99,12 @@ void set_hash()
 
 BOOL in_check(int s)
 {
-	int i;
+	int sq;
 
-	for (i = 0; i < 64; ++i)
-		if (piece[i] == KING && color[i] == s)
-			return attack(i, s ^ 1);
-	return TRUE;  /* shouldn't get here */
+	for (sq = 0; sq < SqLen; ++sq)
+		if (piece[sq] == KING && color[sq] == s)
+			return attack(sq, s ^ 1);
+	return FALSE;  /* shouldn't get here */
 }
 
 
@@ -113,156 +113,41 @@ BOOL in_check(int s)
 
 BOOL attack(int sq, int s)
 {
-	int i, j, n;
+	int frsq, tosq, stride;
 
-	for (i = 0; i < 64; ++i)
-	{
-		if (color[i] == s) {
-			if (piece[i] == PAWN) {
+	for (frsq = 0; frsq < SqLen; ++frsq)
+		if (color[frsq] == s) {
+			if (piece[frsq] == PAWN) {
 				if (s == LIGHT) {
-					if (COL(i) != 0 && i - 9 == sq)
+					if (MapToFile(frsq) != FileA && frsq + DeltaNW == sq)
 						return TRUE;
-					if (COL(i) != 7 && i - 7 == sq)
+					if (MapToFile(frsq) != FileH && frsq + DeltaNE == sq)
 						return TRUE;
 				}
 				else {
-					if (COL(i) != 0 && i + 7 == sq)
+					if (MapToFile(frsq) != FileA && frsq + DeltaSW == sq)
 						return TRUE;
-					if (COL(i) != 7 && i + 9 == sq)
+					if (MapToFile(frsq) != FileH && frsq + DeltaSE == sq)
 						return TRUE;
 				}
 			}
 			else
-			{
-				for (j = 0; j < offsets[piece[i]]; ++j)
-				{
-					for (n = i;;) {
-						n = mailbox[mailbox64[n] + offset[piece[i]][j]];
-						if (n == -1)
+				for (stride = 0; stride < offsets[piece[frsq]]; ++stride)
+					for (tosq = frsq;;) {
+						tosq = mailbox[mailbox64[tosq] + offset[piece[frsq]][stride]];
+						if (tosq == SqNil)
 							break;
-						if (n == sq)
+						if (tosq == sq)
 							return TRUE;
-						if (color[n] != EMPTY)
+						if (color[tosq] != NoColor)
 							break;
-						if (!slide[piece[i]])
+						if (!slide[piece[frsq]])
 							break;
 					}
-				}
-			}
 		}
-	}
 	return FALSE;
 }
 
-
-void genCastles()
-{
-	if (side == LIGHT) {
-		if (castle & 1)
-			gen_push(E1, G1, 2);
-		if (castle & 2)
-			gen_push(E1, C1, 2);
-	}
-	else {
-		if (castle & 4)
-			gen_push(E8, G8, 2);
-		if (castle & 8)
-			gen_push(E8, C8, 2);
-	}
-}
-
-void genEnPassant()
-{
-	if (ep != -1) {
-		if (side == LIGHT) {
-			if (COL(ep) != 0 && color[ep + 7] == LIGHT && piece[ep + 7] == PAWN)
-				gen_push(ep + 7, ep, 21);
-			if (COL(ep) != 7 && color[ep + 9] == LIGHT && piece[ep + 9] == PAWN)
-				gen_push(ep + 9, ep, 21);
-		}
-		else {
-			if (COL(ep) != 0 && color[ep - 9] == DARK && piece[ep - 9] == PAWN)
-				gen_push(ep - 9, ep, 21);
-			if (COL(ep) != 7 && color[ep - 7] == DARK && piece[ep - 7] == PAWN)
-				gen_push(ep - 7, ep, 21);
-		}
-	}
-}
-
-void genPawn(int i)
-{
-	if (side == LIGHT) {
-		if (COL(i) != 0 && color[i - 9] == DARK)
-			gen_push(i, i - 9, 17);
-		if (COL(i) != 7 && color[i - 7] == DARK)
-			gen_push(i, i - 7, 17);
-		if (color[i - 8] == EMPTY) {
-			gen_push(i, i - 8, 16);
-			if (i >= 48 && color[i - 16] == EMPTY)
-				gen_push(i, i - 16, 24);
-		}
-	}
-	else {
-		if (COL(i) != 0 && color[i + 7] == LIGHT)
-			gen_push(i, i + 7, 17);
-		if (COL(i) != 7 && color[i + 9] == LIGHT)
-			gen_push(i, i + 9, 17);
-		if (color[i + 8] == EMPTY) {
-			gen_push(i, i + 8, 16);
-			if (i <= 15 && color[i + 16] == EMPTY)
-				gen_push(i, i + 16, 24);
-		}
-	}
-}
-
-void genPiece(int i)
-{
-	for (int j = 0; j < offsets[piece[i]]; ++j)
-	{
-		int n = i;
-		while (1) {
-			n = mailbox[mailbox64[n] + offset[piece[i]][j]];
-			if (n == -1)
-				break;
-			if (color[n] == EMPTY) {
-				gen_push(i, n, 0);
-				if (!slide[piece[i]])
-					break;
-			}
-			else {
-				if (color[n] == xside)
-					gen_push(i, n, 1);
-				break;
-			}
-		}
-	}
-}
-
-void genSidePiece(int i)
-{
-	if (piece[i] == PAWN) {
-		genPawn(i);
-
-	}
-	else
-	{
-		genPiece(i);
-
-	}
-
-}
-
-void genMoves()
-{
-
-	for (int i = 0; i < 64; ++i)
-	{
-		if (color[i] == side) {
-			genSidePiece(i);
-		}
-
-	}
-}
 
 /* gen() generates pseudo-legal moves for the current position.
    It scans the board to find friendly pieces and then determines
@@ -272,15 +157,83 @@ void genMoves()
 
 void gen()
 {
+	int frsq, tosq, stride;
+
 	/* so far, we have no moves for the current ply */
 	first_move[ply + 1] = first_move[ply];
-	genMoves();
+
+	for (frsq = 0; frsq < SqLen; ++frsq)
+		if (color[frsq] == side) {
+			if (piece[frsq] == PAWN) {
+				if (side == LIGHT) {
+					if (MapToFile(frsq) != FileA && color[frsq + DeltaNW] == DARK)
+						gen_push(frsq, frsq + DeltaNW, MCpawncapt);
+					if (MapToFile(frsq) != FileH && color[frsq + DeltaNE] == DARK)
+						gen_push(frsq, frsq + DeltaNE, MCpawncapt);
+					if (color[frsq + DeltaN] == NoColor) {
+						gen_push(frsq, frsq + DeltaN, MMpawnmove);
+						if (MapToRank(frsq) == Rank2 && color[frsq + Delta2N] == NoColor)
+							gen_push(frsq, frsq + Delta2N, MCpawndadv);
+					}
+				}
+				else {
+					if (MapToFile(frsq) != FileA && color[frsq + DeltaSW] == LIGHT)
+						gen_push(frsq, frsq + DeltaSW, MCpawncapt);
+					if (MapToFile(frsq) != FileH && color[frsq + DeltaSE] == LIGHT)
+						gen_push(frsq, frsq + DeltaSE, MCpawncapt);
+					if (color[frsq + DeltaS] == NoColor) {
+						gen_push(frsq, frsq + DeltaS, MMpawnmove);
+						if (MapToRank(frsq) == Rank7 && color[frsq + Delta2S] == NoColor)
+							gen_push(frsq, frsq + Delta2S, MCpawndadv);
+					}
+				}
+			}
+			else
+				for (stride = 0; stride < offsets[piece[frsq]]; ++stride)
+					for (tosq = frsq;;) {
+						tosq = mailbox[mailbox64[tosq] + offset[piece[frsq]][stride]];
+						if (tosq == SqNil)
+							break;
+						if (color[tosq] != NoColor) {
+							if (color[tosq] == xside)
+								gen_push(frsq, tosq, MMcapture);
+							break;
+						}
+						gen_push(frsq, tosq, 0);
+						if (!slide[piece[frsq]])
+							break;
+					}
+		}
 
 	/* generate castle moves */
-	genCastles();
-	/* generate en passant moves */
-	genEnPassant();
+	if (side == LIGHT) {
+		if (castle & CMwk)
+			gen_push(SqE1, SqG1, MMcastle);
+		if (castle & CMwq)
+			gen_push(SqE1, SqC1, MMcastle);
+	}
+	else {
+		if (castle & CMbk)
+			gen_push(SqE8, SqG8, MMcastle);
+		if (castle & CMbq)
+			gen_push(SqE8, SqC8, MMcastle);
+	}
 
+	/* generate en passant moves */
+	if (ep != SqNil) {
+		if (side == LIGHT) {
+			if (MapToFile(ep) != FileA && color[ep + DeltaSW] == LIGHT && piece[ep + DeltaSW] == PAWN)
+				gen_push(ep + DeltaSW, ep, MCpawnep);
+			if (MapToFile(ep) != FileH && color[ep + DeltaSE] == LIGHT && piece[ep + DeltaSE] == PAWN)
+				gen_push(ep + DeltaSE, ep, MCpawnep);
+		}
+		else {
+			if (MapToFile(ep) != FileA && color[ep + DeltaNW] == DARK && piece[ep + DeltaNW] == PAWN)
+				gen_push(ep + DeltaNW, ep, MCpawnep);
+			if (MapToFile(ep) != FileH && color[ep + DeltaNE] == DARK && piece[ep + DeltaNE] == PAWN)
+				gen_push(ep + DeltaNE, ep, MCpawnep);
+		}
+	}
 }
 
 
@@ -290,56 +243,56 @@ void gen()
 
 void gen_caps()
 {
-	int i, j, n;
+	int frsq, tosq, stride;
 
 	first_move[ply + 1] = first_move[ply];
-	for (i = 0; i < 64; ++i)
-		if (color[i] == side) {
-			if (piece[i] == PAWN) {
+	for (frsq = 0; frsq < SqLen; ++frsq)
+		if (color[frsq] == side) {
+			if (piece[frsq]==PAWN) {
 				if (side == LIGHT) {
-					if (COL(i) != 0 && color[i - 9] == DARK)
-						gen_push(i, i - 9, 17);
-					if (COL(i) != 7 && color[i - 7] == DARK)
-						gen_push(i, i - 7, 17);
-					if (i <= 15 && color[i - 8] == EMPTY)
-						gen_push(i, i - 8, 16);
+					if (MapToFile(frsq) != FileA && color[frsq + DeltaNW] == DARK)
+						gen_push(frsq, frsq + DeltaNW, MCpawncapt);
+					if (MapToFile(frsq) != FileH && color[frsq + DeltaNE] == DARK)
+						gen_push(frsq, frsq + DeltaNE, MCpawncapt);
+					if (MapToRank(frsq) == Rank7 && color[frsq + DeltaN] == NoColor)
+						gen_push(frsq, frsq + DeltaN, MMpawnmove);
 				}
 				if (side == DARK) {
-					if (COL(i) != 0 && color[i + 7] == LIGHT)
-						gen_push(i, i + 7, 17);
-					if (COL(i) != 7 && color[i + 9] == LIGHT)
-						gen_push(i, i + 9, 17);
-					if (i >= 48 && color[i + 8] == EMPTY)
-						gen_push(i, i + 8, 16);
+					if (MapToFile(frsq) != FileA && color[frsq + DeltaSW] == LIGHT)
+						gen_push(frsq, frsq + DeltaSW, MCpawncapt);
+					if (MapToFile(frsq) != FileH && color[frsq + DeltaSE] == LIGHT)
+						gen_push(frsq, frsq + DeltaSE, MCpawncapt);
+					if (MapToRank(frsq) == Rank2 && color[frsq + DeltaS] == NoColor)
+						gen_push(frsq, frsq + DeltaS, MMpawnmove);
 				}
 			}
 			else
-				for (j = 0; j < offsets[piece[i]]; ++j)
-					for (n = i;;) {
-						n = mailbox[mailbox64[n] + offset[piece[i]][j]];
-						if (n == -1)
+				for (stride = 0; stride < offsets[piece[frsq]]; ++stride)
+					for (tosq = frsq;;) {
+						tosq = mailbox[mailbox64[tosq] + offset[piece[frsq]][stride]];
+						if (tosq == SqNil)
 							break;
-						if (color[n] != EMPTY) {
-							if (color[n] == xside)
-								gen_push(i, n, 1);
+						if (color[tosq] != NoColor) {
+							if (color[tosq] == xside)
+								gen_push(frsq, tosq, MMcapture);
 							break;
 						}
-						if (!slide[piece[i]])
+						if (!slide[piece[frsq]])
 							break;
 					}
 		}
-	if (ep != -1) {
+	if (ep != SqNil) {
 		if (side == LIGHT) {
-			if (COL(ep) != 0 && color[ep + 7] == LIGHT && piece[ep + 7] == PAWN)
-				gen_push(ep + 7, ep, 21);
-			if (COL(ep) != 7 && color[ep + 9] == LIGHT && piece[ep + 9] == PAWN)
-				gen_push(ep + 9, ep, 21);
+			if (MapToFile(ep) != FileA && color[ep + DeltaSW] == LIGHT && piece[ep + DeltaSW] == PAWN)
+				gen_push(ep + DeltaSW, ep, MCpawnep);
+			if (MapToFile(ep) != FileH && color[ep + DeltaSE] == LIGHT && piece[ep + DeltaSE] == PAWN)
+				gen_push(ep + DeltaSE, ep, MCpawnep);
 		}
 		else {
-			if (COL(ep) != 0 && color[ep - 9] == DARK && piece[ep - 9] == PAWN)
-				gen_push(ep - 9, ep, 21);
-			if (COL(ep) != 7 && color[ep - 7] == DARK && piece[ep - 7] == PAWN)
-				gen_push(ep - 7, ep, 21);
+			if (MapToFile(ep) != FileA && color[ep + DeltaNW] == DARK && piece[ep + DeltaNW] == PAWN)
+				gen_push(ep + DeltaNW, ep, MCpawnep);
+			if (MapToFile(ep) != FileH && color[ep + DeltaNE] == DARK && piece[ep + DeltaNE] == PAWN)
+				gen_push(ep + DeltaNE, ep, MCpawnep);
 		}
 	}
 }
@@ -358,15 +311,15 @@ void gen_push(int from, int to, int bits)
 {
 	gen_t *g;
 
-	if (bits & 16) {
+	if (bits & MMpawnmove) {
 		if (side == LIGHT) {
-			if (to <= H8) {
+			if (MapToRank(to) == Rank8) {
 				gen_promote(from, to, bits);
 				return;
 			}
 		}
 		else {
-			if (to >= A1) {
+			if (MapToRank(to) == Rank1) {
 				gen_promote(from, to, bits);
 				return;
 			}
@@ -377,7 +330,7 @@ void gen_push(int from, int to, int bits)
 	g->m.b.to = (char)to;
 	g->m.b.promote = 0;
 	g->m.b.bits = (char)bits;
-	if (color[to] != EMPTY)
+	if (color[to] != NoColor)
 		g->score = 1000000 + (piece[to] * 10) - piece[from];
 	else
 		g->score = history[from][to];
@@ -389,16 +342,16 @@ void gen_push(int from, int to, int bits)
 
 void gen_promote(int from, int to, int bits)
 {
-	int i;
+	int piecekind;
 	gen_t *g;
 
-	for (i = KNIGHT; i <= QUEEN; ++i) {
+	for (piecekind = KNIGHT; piecekind <= QUEEN; ++piecekind) {
 		g = &gen_dat[first_move[ply + 1]++];
 		g->m.b.from = (char)from;
 		g->m.b.to = (char)to;
-		g->m.b.promote = (char)i;
-		g->m.b.bits = (char)(bits | 32);
-		g->score = 1000000 + (i * 10);
+		g->m.b.promote = (char)piecekind;
+		g->m.b.bits = (char)(bits | MMpromote);
+		g->score = 1000000 + (piecekind * 10);
 	}
 }
 
@@ -412,49 +365,51 @@ BOOL makemove(move_bytes m)
 
 	/* test to see if a castle move is legal and move the rook
 	   (the king is moved with the usual move code later) */
-	if (m.bits & 2) {
+	if (m.bits & MMcastle) {
 		int from, to;
 
 		if (in_check(side))
 			return FALSE;
 		switch (m.to) {
-		case 62:
-			if (color[F1] != EMPTY || color[G1] != EMPTY ||
-				attack(F1, xside) || attack(G1, xside))
-				return FALSE;
-			from = H1;
-			to = F1;
-			break;
-		case 58:
-			if (color[B1] != EMPTY || color[C1] != EMPTY || color[D1] != EMPTY ||
-				attack(C1, xside) || attack(D1, xside))
-				return FALSE;
-			from = A1;
-			to = D1;
-			break;
-		case 6:
-			if (color[F8] != EMPTY || color[G8] != EMPTY ||
-				attack(F8, xside) || attack(G8, xside))
-				return FALSE;
-			from = H8;
-			to = F8;
-			break;
-		case 2:
-			if (color[B8] != EMPTY || color[C8] != EMPTY || color[D8] != EMPTY ||
-				attack(C8, xside) || attack(D8, xside))
-				return FALSE;
-			from = A8;
-			to = D8;
-			break;
-		default:  /* shouldn't get here */
-			from = -1;
-			to = -1;
-			break;
+			case SqG1:
+				if (color[SqF1] != NoColor || color[SqG1] != NoColor ||
+						attack(SqF1, xside) || attack(SqG1, xside))
+					return FALSE;
+				from = SqH1;
+				to = SqF1;
+				break;
+			case SqC1:
+				if (color[SqB1] != NoColor || color[SqC1] != NoColor || color[SqD1] != NoColor ||
+						attack(SqC1, xside) || attack(SqD1, xside))
+					return FALSE;
+				from = SqA1;
+				to = SqD1;
+				break;
+			case SqG8:
+				if (color[SqF8] != NoColor || color[SqG8] != NoColor ||
+						attack(SqF8, xside) || attack(SqG8, xside))
+					return FALSE;
+				from = SqH8;
+				to = SqF8;
+				break;
+			case SqC8:
+				if (color[SqB8] != NoColor || color[SqC8] != NoColor || color[SqD8] != NoColor ||
+						attack(SqC8, xside) || attack(SqD8, xside))
+					return FALSE;
+				from = SqA8;
+				to = SqD8;
+				break;
+			default:  /* shouldn't get here */
+				from = SqNil;
+				to = SqNil;
+				break;
 		}
 		color[to] = color[from];
 		piece[to] = piece[from];
-		color[from] = EMPTY;
-		piece[from] = EMPTY;
+		//color[from] = NoColor;
+		//piece[from] = NoPiece;
+		piece[from] = piece[from] + 1;
+		
 	}
 
 	/* back up information so we can take the move back later. */
@@ -470,37 +425,37 @@ BOOL makemove(move_bytes m)
 	/* update the castle, en passant, and
 	   fifty-move-draw variables */
 	castle &= castle_mask[(int)m.from] & castle_mask[(int)m.to];
-	if (m.bits & 8) {
+	if (m.bits & MMdoubleadv) {
 		if (side == LIGHT)
-			ep = m.to + 8;
+			ep = m.to + DeltaS;
 		else
-			ep = m.to - 8;
+			ep = m.to + DeltaN;
 	}
 	else
-		ep = -1;
-	if (m.bits & 17)
+		ep = SqNil;
+	if (m.bits & MCpawncapt)
 		fifty = 0;
 	else
 		++fifty;
 
 	/* move the piece */
 	color[(int)m.to] = side;
-	if (m.bits & 32)
+	if (m.bits & MMpromote)
 		piece[(int)m.to] = m.promote;
 	else
 		piece[(int)m.to] = piece[(int)m.from];
-	color[(int)m.from] = EMPTY;
-	piece[(int)m.from] = EMPTY;
+	//color[(int)m.from] = NoColor;
+	piece[(int)m.from] = piece[(int)m.to] + 1;
 
 	/* erase the pawn if this is an en passant move */
-	if (m.bits & 4) {
+	if (m.bits & MMenpassant) {
 		if (side == LIGHT) {
-			color[m.to + 8] = EMPTY;
-			piece[m.to + 8] = EMPTY;
+			color[m.to + DeltaS] = NoColor;
+			piece[m.to + DeltaS] = NoPiece;
 		}
 		else {
-			color[m.to - 8] = EMPTY;
-			piece[m.to - 8] = EMPTY;
+			color[m.to + DeltaN] = NoColor;
+			piece[m.to + DeltaN] = NoPiece;
 		}
 	}
 
@@ -534,56 +489,56 @@ void takeback()
 	fifty = hist_dat[hply].fifty;
 	hash = hist_dat[hply].hash;
 	color[(int)m.from] = side;
-	if (m.bits & 32)
+	if (m.bits & MMpromote)
 		piece[(int)m.from] = PAWN;
 	else
 		piece[(int)m.from] = piece[(int)m.to];
-	if (hist_dat[hply].capture == EMPTY) {
-		color[(int)m.to] = EMPTY;
-		piece[(int)m.to] = EMPTY;
+	if (hist_dat[hply].capture == NoPiece) {
+		color[(int)m.to] = NoColor;
+		piece[(int)m.to] = NoPiece;
 	}
 	else {
 		color[(int)m.to] = xside;
 		piece[(int)m.to] = hist_dat[hply].capture;
 	}
-	if (m.bits & 2) {
+	if (m.bits & MMcastle) {
 		int from, to;
 
-		switch (m.to) {
-		case 62:
-			from = F1;
-			to = H1;
-			break;
-		case 58:
-			from = D1;
-			to = A1;
-			break;
-		case 6:
-			from = F8;
-			to = H8;
-			break;
-		case 2:
-			from = D8;
-			to = A8;
-			break;
-		default:  /* shouldn't get here */
-			from = -1;
-			to = -1;
-			break;
+		switch(m.to) {
+			case SqG1:
+				from = SqF1;
+				to = SqH1;
+				break;
+			case SqC1:
+				from = SqD1;
+				to = SqA1;
+				break;
+			case SqG8:
+				from = SqF8;
+				to = SqH8;
+				break;
+			case SqC8:
+				from = SqD8;
+				to = SqA8;
+				break;
+			default:  /* shouldn't get here */
+				from = SqNil;
+				to = SqNil;
+				break;
 		}
 		color[to] = side;
 		piece[to] = ROOK;
-		color[from] = EMPTY;
-		piece[from] = EMPTY;
+		color[from] = NoColor;
+		piece[from] = NoPiece;
 	}
-	if (m.bits & 4) {
+	if (m.bits & MMenpassant) {
 		if (side == LIGHT) {
-			color[m.to + 8] = xside;
-			piece[m.to + 8] = PAWN;
+			color[m.to + DeltaS] = xside;
+			piece[m.to + DeltaS] = PAWN;
 		}
 		else {
-			color[m.to - 8] = xside;
-			piece[m.to - 8] = PAWN;
+			color[m.to + DeltaN] = xside;
+			piece[m.to + DeltaN] = PAWN;
 		}
 	}
 }

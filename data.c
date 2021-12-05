@@ -10,8 +10,8 @@
 
 
 /* the board representation */
-int color[64];  /* LIGHT, DARK, or EMPTY */
-int piece[64];  /* PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING, or EMPTY */
+int color[SqLen];  /* LIGHT, DARK, or EMPTY */
+int piece[SqLen];  /* PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING, or EMPTY */
 int side;  /* the side to move */
 int xside;  /* the side not to move */
 int castle;  /* a bitfield with the castle permissions. if 1 is set,
@@ -36,7 +36,7 @@ gen_t gen_dat[GEN_STACK];
 int first_move[MAX_PLY];
 
 /* the history heuristic array (used for move ordering) */
-int history[64][64];
+int history[SqLen][SqLen];
 
 /* we need an array of hist_t's so we can take back the
    moves we make */
@@ -60,9 +60,9 @@ int pv_length[MAX_PLY];
 BOOL follow_pv;
 
 /* random numbers used to compute hash; see set_hash() in board.c */
-int hash_piece[2][6][64];  /* indexed by piece [color][type][square] */
+int hash_piece[ColorLen][PieceLen][SqLen];  /* indexed by piece [color][type][square] */
 int hash_side;
-int hash_ep[64];
+int hash_ep[SqLen];
 
 /* Now we have the mailbox array, so called because it looks like a
    mailbox, at least according to Bob Hyatt. This is useful when we
@@ -76,7 +76,7 @@ int hash_ep[64];
    bounds and we can forget it. You can see how mailbox[] is used
    in attack() in board.c. */
 
-int mailbox[120] = {
+int mailbox[MailboxLen] = {
 	 -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
 	 -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
 	 -1,  0,  1,  2,  3,  4,  5,  6,  7, -1,
@@ -91,7 +91,7 @@ int mailbox[120] = {
 	 -1, -1, -1, -1, -1, -1, -1, -1, -1, -1
 };
 
-int mailbox64[64] = {
+int mailbox64[SqLen] = {
 	21, 22, 23, 24, 25, 26, 27, 28,
 	31, 32, 33, 34, 35, 36, 37, 38,
 	41, 42, 43, 44, 45, 46, 47, 48,
@@ -109,21 +109,21 @@ int mailbox64[64] = {
    number of directions it can move in, and offset is an array
    of the actual directions. */
 
-BOOL slide[6] = {
+BOOL slide[PieceLen] = {
 	FALSE, FALSE, TRUE, TRUE, TRUE, FALSE
 };
 
-int offsets[6] = {
+int offsets[PieceLen] = {
 	0, 8, 4, 4, 8, 8
 };
 
-int offset[6][8] = {
-	{ 0, 0, 0, 0, 0, 0, 0, 0 },
-	{ -21, -19, -12, -8, 8, 12, 19, 21 },
-	{ -11, -9, 9, 11, 0, 0, 0, 0 },
-	{ -10, -1, 1, 10, 0, 0, 0, 0 },
-	{ -11, -10, -9, -1, 1, 9, 10, 11 },
-	{ -11, -10, -9, -1, 1, 9, 10, 11 }
+int offset[PieceLen][OffsetLen] = {
+	{   0,   0,   0,   0,   0,   0,   0,   0 },
+	{ -21, -19, -12,  -8,   8,  12,  19,  21 },
+	{ -11,  -9,   9,  11,   0,   0,   0,   0 },
+	{ -10,  -1,   1,  10,   0,   0,   0,   0 },
+	{ -11, -10,  -9,  -1,   1,   9,  10,  11 },
+	{ -11, -10,  -9,  -1,   1,   9,  10,  11 }
 };
 
 
@@ -136,44 +136,46 @@ int offset[6][8] = {
    castle_mask[63], so we have 1&14, and castle becomes 0 and
    white can't castle kingside anymore. */
 
-int castle_mask[64] = {
-	 7, 15, 15, 15,  3, 15, 15, 11,
-	15, 15, 15, 15, 15, 15, 15, 15,
-	15, 15, 15, 15, 15, 15, 15, 15,
-	15, 15, 15, 15, 15, 15, 15, 15,
-	15, 15, 15, 15, 15, 15, 15, 15,
-	15, 15, 15, 15, 15, 15, 15, 15,
-	15, 15, 15, 15, 15, 15, 15, 15,
-	13, 15, 15, 15, 12, 15, 15, 14
+int castle_mask[SqLen] = {
+	CCiA8, CCall, CCall, CCall, CCiE8, CCall, CCall, CCiH8,
+	CCall, CCall, CCall, CCall, CCall, CCall, CCall, CCall,
+	CCall, CCall, CCall, CCall, CCall, CCall, CCall, CCall,
+	CCall, CCall, CCall, CCall, CCall, CCall, CCall, CCall,
+	CCall, CCall, CCall, CCall, CCall, CCall, CCall, CCall,
+	CCall, CCall, CCall, CCall, CCall, CCall, CCall, CCall,
+	CCall, CCall, CCall, CCall, CCall, CCall, CCall, CCall,
+  CCiA1, CCall, CCall, CCall, CCiE1, CCall, CCall, CCiH1
 };
 
 
 /* the piece letters, for print_board() */
-char piece_char[6] = {
+char piece_char[PieceLen] = {
 	'P', 'N', 'B', 'R', 'Q', 'K'
 };
 
 
 /* the initial board state */
 
-int init_color[64] = {
-	1, 1, 1, 1, 1, 1, 1, 1,
-	1, 1, 1, 1, 1, 1, 1, 1,
-	6, 6, 6, 6, 6, 6, 6, 6,
-	6, 6, 6, 6, 6, 6, 6, 6,
-	6, 6, 6, 6, 6, 6, 6, 6,
-	6, 6, 6, 6, 6, 6, 6, 6,
-	0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0
+int init_color[SqLen] = {
+  DARK,    DARK,    DARK,    DARK,    DARK,    DARK,    DARK,    DARK,
+  DARK,    DARK,    DARK,    DARK,    DARK,    DARK,    DARK,    DARK,
+  NoColor, NoColor, NoColor, NoColor, NoColor, NoColor, NoColor, NoColor,
+  NoColor, NoColor, NoColor, NoColor, NoColor, NoColor, NoColor, NoColor,
+  NoColor, NoColor, NoColor, NoColor, NoColor, NoColor, NoColor, NoColor,
+  NoColor, NoColor, NoColor, NoColor, NoColor, NoColor, NoColor, NoColor,
+  LIGHT,   LIGHT,   LIGHT,   LIGHT,   LIGHT,   LIGHT,   LIGHT,   LIGHT,
+  LIGHT,   LIGHT,   LIGHT,   LIGHT,   LIGHT,   LIGHT,   LIGHT,   LIGHT
 };
 
-int init_piece[64] = {
-	3, 1, 2, 4, 5, 2, 1, 3,
-	0, 0, 0, 0, 0, 0, 0, 0,
-	6, 6, 6, 6, 6, 6, 6, 6,
-	6, 6, 6, 6, 6, 6, 6, 6,
-	6, 6, 6, 6, 6, 6, 6, 6,
-	6, 6, 6, 6, 6, 6, 6, 6,
-	0, 0, 0, 0, 0, 0, 0, 0,
-	3, 1, 2, 4, 5, 2, 1, 3
+int init_piece[SqLen] = {
+  /* ROOK,    KNIGHT,  BISHOP,  QUEEN,   KING,    BISHOP,  KNIGHT,  ROOK, */
+  NoPiece, NoPiece, NoPiece, NoPiece, NoPiece, NoPiece, NoPiece, NoPiece,
+  PAWN,    PAWN,    PAWN,    PAWN,    PAWN,    PAWN,    PAWN,    PAWN,
+  NoPiece, NoPiece, NoPiece, NoPiece, NoPiece, NoPiece, NoPiece, NoPiece,
+  NoPiece, NoPiece, NoPiece, NoPiece, NoPiece, NoPiece, NoPiece, NoPiece,
+  NoPiece, NoPiece, NoPiece, NoPiece, NoPiece, NoPiece, NoPiece, NoPiece,
+  NoPiece, NoPiece, NoPiece, NoPiece, NoPiece, NoPiece, NoPiece, NoPiece,
+  PAWN,    PAWN,    PAWN,    PAWN,    PAWN,    PAWN,    PAWN,    PAWN,
+  NoPiece, NoPiece, NoPiece, NoPiece, NoPiece, NoPiece, NoPiece, NoPiece,
+  /* ROOK,    KNIGHT,  BISHOP,  QUEEN,   KING,    BISHOP,  KNIGHT,  ROOK */
 };

@@ -27,11 +27,11 @@ BOOL stop_search;
 
 void think(int output)
 {
-	int i, j, x;
+	int iteration, score, plyindex;
 
 	/* try the opening book first */
 	pv[0][0].u = book_move();
-	if (pv[0][0].u != -1)
+	if (pv[0][0].u != MvNil)
 		return;
 
 	/* some code that lets us longjmp back here and return
@@ -39,7 +39,7 @@ void think(int output)
 	stop_search = FALSE;
 	setjmp(env);
 	if (stop_search) {
-		
+
 		/* make sure to take back the line we were searching */
 		while (ply)
 			takeback();
@@ -54,23 +54,23 @@ void think(int output)
 
 	memset(pv, 0, sizeof(pv));
 	memset(history, 0, sizeof(history));
-	if (output == 1)
+	if (output == PmConsole)
 		printf("ply      nodes  score  pv\n");
-	for (i = 1; i <= max_depth; ++i) {
+	for (iteration = 1; iteration <= max_depth; ++iteration) {
 		follow_pv = TRUE;
-		x = search(-10000, 10000, i);
-		if (output == 1)
-			printf("%3d  %9d  %5d ", i, nodes, x);
-		else if (output == 2)
+		score = search(SvCheckmated, SvMateIn0, iteration);
+		if (output == PmConsole)
+			printf("%3d  %9d  %5d ", iteration, nodes, score);
+		else if (output == PmXBoard)
 			printf("%d %d %d %d",
-					i, x, (get_ms() - start_time) / 10, nodes);
-		if (output) {
-			for (j = 0; j < pv_length[0]; ++j)
-				printf(" %s", move_str(pv[0][j].b));
+					iteration, score, (get_ms() - start_time) / 10, nodes);
+		if (output != PmNone) {
+			for (plyindex = 0; plyindex < pv_length[0]; ++plyindex)
+				printf(" %s", move_str(pv[0][plyindex].b));
 			printf("\n");
 			fflush(stdout);
 		}
-		if (x > 9000 || x < -9000)
+		if (score > SvSlowMate || score < SvSlowLose)
 			break;
 	}
 }
@@ -80,17 +80,17 @@ void think(int output)
 
 int search(int alpha, int beta, int depth)
 {
-	int i, j, x;
-	BOOL c, f;
+	int genindex, score, plyindex;
+	BOOL checked, atleast1move;
 
 	/* we're as deep as we want to be; call quiesce() to get
 	   a reasonable score and return it. */
 	if (!depth)
-		return quiesce(alpha,beta);
+		return quiesce(alpha, beta);
 	++nodes;
 
 	/* do some housekeeping every 1024 nodes */
-	if ((nodes & 1023) == 0)
+	if ((nodes & MX(10)) == 0)
 		checkup();
 
 	pv_length[ply] = ply;
@@ -100,7 +100,7 @@ int search(int alpha, int beta, int depth)
 	   see if the position is a repeat. if so, we can assume that
 	   this line is a draw and return 0. */
 	if (ply && reps())
-		return 0;
+		return SvEven;
 
 	/* are we too deep? */
 	if (ply >= MAX_PLY - 1)
@@ -109,51 +109,51 @@ int search(int alpha, int beta, int depth)
 		return eval();
 
 	/* are we in check? if so, we want to search deeper */
-	c = in_check(side);
-	if (c)
+	checked = in_check(side);
+	if (checked)
 		++depth;
 	gen();
 	if (follow_pv)  /* are we following the PV? */
 		sort_pv();
-	f = FALSE;
+	atleast1move = FALSE;
 
 	/* loop through the moves */
-	for (i = first_move[ply]; i < first_move[ply + 1]; ++i) {
-		sort(i);
-		if (!makemove(gen_dat[i].m.b))
+	for (genindex = first_move[ply]; genindex < first_move[ply + 1]; ++genindex) {
+		sort(genindex);
+		if (!makemove(gen_dat[genindex].m.b))
 			continue;
-		f = TRUE;
-		x = -search(-beta, -alpha, depth - 1);
+		atleast1move = TRUE;
+		score = -search(-beta, -alpha, depth - 1);
 		takeback();
-		if (x > alpha) {
+		if (score > alpha) {
 
 			/* this move caused a cutoff, so increase the history
 			   value so it gets ordered high next time we can
 			   search it */
-			history[(int)gen_dat[i].m.b.from][(int)gen_dat[i].m.b.to] += depth;
-			if (x >= beta)
+			history[(int)gen_dat[genindex].m.b.from][(int)gen_dat[genindex].m.b.to] += depth;
+			if (score >= beta)
 				return beta;
-			alpha = x;
+			alpha = score;
 
 			/* update the PV */
-			pv[ply][ply] = gen_dat[i].m;
-			for (j = ply + 1; j < pv_length[ply + 1]; ++j)
-				pv[ply][j] = pv[ply + 1][j];
+			pv[ply][ply] = gen_dat[genindex].m;
+			for (plyindex = ply + 1; plyindex < pv_length[ply + 1]; ++plyindex)
+				pv[ply][plyindex] = pv[ply + 1][plyindex];
 			pv_length[ply] = pv_length[ply + 1];
 		}
 	}
 
 	/* no legal moves? then we're in checkmate or stalemate */
-	if (!f) {
-		if (c)
-			return -10000 + ply;
+	if (!atleast1move) {
+		if (checked)
+			return SvCheckmated + ply;
 		else
-			return 0;
+			return SvEven;
 	}
 
 	/* fifty move draw rule */
 	if (fifty >= 100)
-		return 0;
+		return SvEven;
 	return alpha;
 }
 
@@ -165,14 +165,14 @@ int search(int alpha, int beta, int depth)
    is to find a position where there isn't a lot going on
    so the static evaluation function will work. */
 
-int quiesce(int alpha,int beta)
+int quiesce(int alpha, int beta)
 {
-	int i, j, x;
+	int genindex, score, plyindex;
 
 	++nodes;
 
 	/* do some housekeeping every 1024 nodes */
-	if ((nodes & 1023) == 0)
+	if ((nodes & MX(10)) == 0)
 		checkup();
 
 	pv_length[ply] = ply;
@@ -184,32 +184,32 @@ int quiesce(int alpha,int beta)
 		return eval();
 
 	/* check with the evaluation function */
-	x = eval();
-	if (x >= beta)
+	score = eval();
+	if (score >= beta)
 		return beta;
-	if (x > alpha)
-		alpha = x;
+	if (score > alpha)
+		alpha = score;
 
 	gen_caps();
 	if (follow_pv)  /* are we following the PV? */
 		sort_pv();
 
 	/* loop through the moves */
-	for (i = first_move[ply]; i < first_move[ply + 1]; ++i) {
-		sort(i);
-		if (!makemove(gen_dat[i].m.b))
+	for (genindex = first_move[ply]; genindex < first_move[ply + 1]; ++genindex) {
+		sort(genindex);
+		if (!makemove(gen_dat[genindex].m.b))
 			continue;
-		x = -quiesce(-beta, -alpha);
+		score = -quiesce(-beta, -alpha);
 		takeback();
-		if (x > alpha) {
-			if (x >= beta)
+		if (score > alpha) {
+			if (score >= beta)
 				return beta;
-			alpha = x;
+			alpha = score;
 
 			/* update the PV */
-			pv[ply][ply] = gen_dat[i].m;
-			for (j = ply + 1; j < pv_length[ply + 1]; ++j)
-				pv[ply][j] = pv[ply + 1][j];
+			pv[ply][ply] = gen_dat[genindex].m;
+			for (plyindex = ply + 1; plyindex < pv_length[ply + 1]; ++plyindex)
+				pv[ply][plyindex] = pv[ply + 1][plyindex];
 			pv_length[ply] = pv_length[ply + 1];
 		}
 	}
@@ -223,11 +223,11 @@ int quiesce(int alpha,int beta)
 
 int reps()
 {
-	int i;
+	int histindex;
 	int r = 0;
 
-	for (i = hply - fifty; i < hply; ++i)
-		if (hist_dat[i].hash == hash)
+	for (histindex = hply - fifty; histindex < hply; ++histindex)
+		if (hist_dat[histindex].hash == hash)
 			++r;
 	return r;
 }
@@ -242,13 +242,13 @@ int reps()
 
 void sort_pv()
 {
-	int i;
+	int genindex;
 
 	follow_pv = FALSE;
-	for(i = first_move[ply]; i < first_move[ply + 1]; ++i)
-		if (gen_dat[i].m.u == pv[0][ply].u) {
+	for(genindex = first_move[ply]; genindex < first_move[ply + 1]; ++genindex)
+		if (gen_dat[genindex].m.u == pv[0][ply].u) {
 			follow_pv = TRUE;
-			gen_dat[i].score += 10000000;
+			gen_dat[genindex].score += 10000000;
 			return;
 		}
 }
@@ -262,17 +262,17 @@ void sort_pv()
 
 void sort(int from)
 {
-	int i;
+	int genindex;
 	int bs;  /* best score */
 	int bi;  /* best i */
 	gen_t g;
 
 	bs = -1;
 	bi = from;
-	for (i = from; i < first_move[ply + 1]; ++i)
-		if (gen_dat[i].score > bs) {
-			bs = gen_dat[i].score;
-			bi = i;
+	for (genindex = from; genindex < first_move[ply + 1]; ++genindex)
+		if (gen_dat[genindex].score > bs) {
+			bs = gen_dat[genindex].score;
+			bi = genindex;
 		}
 	g = gen_dat[from];
 	gen_dat[from] = gen_dat[bi];

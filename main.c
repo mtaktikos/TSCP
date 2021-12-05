@@ -2,7 +2,7 @@
  *	MAIN.C
  *	Tom Kerrigan's Simple Chess Program (TSCP)
  *
- *	Copyright 2016 Tom Kerrigan
+ *	Copyright 1997 Tom Kerrigan
  */
 
 
@@ -26,7 +26,7 @@ int get_ms()
 	ftime(&timebuffer);
 	if (timebuffer.millitm != 0)
 		ftime_ok = TRUE;
-	return (timebuffer.time * 1000) + timebuffer.millitm;
+	return (int) (timebuffer.time * 1000) + timebuffer.millitm;
 }
 
 
@@ -37,13 +37,13 @@ int get_ms()
 int main()
 {
 	int computer_side;
-	char s[256];
+	char s[TextLen];
 	int m;
 
 	printf("\n");
 	printf("Tom Kerrigan's Simple Chess Program (TSCP)\n");
-	printf("version 1.81b, 3/10/16\n");
-	printf("Copyright 2016 Tom Kerrigan\n");
+	printf("version 1.81, 2/5/03\n");
+	printf("Copyright 1997 Tom Kerrigan\n");
 	printf("\n");
 	printf("\"help\" displays a list of commands.\n");
 	printf("\n");
@@ -51,17 +51,17 @@ int main()
 	init_board();
 	open_book();
 	gen();
-	computer_side = EMPTY;
-	max_time = 1 << 25;
+	computer_side = NoColor;
+	max_time = MaxLevelTime;
 	max_depth = 4;
 	for (;;) {
 		if (side == computer_side) {  /* computer's turn */
-			
+
 			/* think about the move and make it */
 			think(1);
-			if (!pv[0][0].u) {
+			if (pv[0][0].u == MvVoid) {
 				printf("(no legal moves)\n");
-				computer_side = EMPTY;
+				computer_side = NoColor;
 				continue;
 			}
 			printf("Computer's move: %s\n", move_str(pv[0][0].b));
@@ -81,7 +81,7 @@ int main()
 			continue;
 		}
 		if (!strcmp(s, "off")) {
-			computer_side = EMPTY;
+			computer_side = NoColor;
 			continue;
 		}
 		if (!strcmp(s, "st")) {
@@ -98,14 +98,14 @@ int main()
 		if (!strcmp(s, "undo")) {
 			if (!hply)
 				continue;
-			computer_side = EMPTY;
+			computer_side = NoColor;
 			takeback();
 			ply = 0;
 			gen();
 			continue;
 		}
 		if (!strcmp(s, "new")) {
-			computer_side = EMPTY;
+			computer_side = NoColor;
 			init_board();
 			gen();
 			continue;
@@ -115,8 +115,15 @@ int main()
 			continue;
 		}
 		if (!strcmp(s, "bench")) {
-			computer_side = EMPTY;
+			computer_side = NoColor;
 			bench();
+			continue;
+		}
+		if (!strcmp(s, "perft")) {
+      unsigned int draft;
+
+			scanf("%u", &draft);
+      perft(draft);
 			continue;
 		}
 		if (!strcmp(s, "bye")) {
@@ -136,6 +143,7 @@ int main()
 			printf("new - starts a new game\n");
 			printf("d - display the board\n");
 			printf("bench - run the built-in benchmark\n");
+			printf("perft n - count movepaths to depth n\n");
 			printf("bye - exit the program\n");
 			printf("xboard - switch to XBoard mode\n");
 			printf("Enter moves in coordinate notation, e.g., e2e4, e7e8Q\n");
@@ -182,7 +190,7 @@ int parse_move(char *s)
 			/* if the move is a promotion, handle the promotion piece;
 			   assume that the promotion moves occur consecutively in
 			   gen_dat. */
-			if (gen_dat[i].m.b.bits & 32)
+			if (gen_dat[i].m.b.bits & MMpromote)
 				switch (s[4]) {
 					case 'N':
 					case 'n':
@@ -193,6 +201,9 @@ int parse_move(char *s)
 					case 'R':
 					case 'r':
 						return i + 2;
+					case 'Q':
+					case 'q':
+						return i + 3;
 					default:  /* assume it's a queen */
 						return i + 3;
 				}
@@ -212,7 +223,7 @@ char *move_str(move_bytes m)
 
 	char c;
 
-	if (m.bits & 32) {
+	if (m.bits & MMpromote) {
 		switch (m.promote) {
 			case KNIGHT:
 				c = 'n';
@@ -223,23 +234,26 @@ char *move_str(move_bytes m)
 			case ROOK:
 				c = 'r';
 				break;
+			case QUEEN:
+				c = 'q';
+				break;
 			default:
 				c = 'q';
 				break;
 		}
 		sprintf(str, "%c%d%c%d%c",
-				COL(m.from) + 'a',
-				8 - ROW(m.from),
-				COL(m.to) + 'a',
-				8 - ROW(m.to),
+				MapToFile(m.from) + 'a',
+				8 - MapToRank(m.from),
+				MapToFile(m.to) + 'a',
+				8 - MapToRank(m.to),
 				c);
 	}
 	else
 		sprintf(str, "%c%d%c%d",
-				COL(m.from) + 'a',
-				8 - ROW(m.from),
-				COL(m.to) + 'a',
-				8 - ROW(m.to));
+				MapToFile(m.from) + 'a',
+				8 - MapToRank(m.from),
+				MapToFile(m.to) + 'a',
+				8 - MapToRank(m.to));
 	return str;
 }
 
@@ -248,23 +262,23 @@ char *move_str(move_bytes m)
 
 void print_board()
 {
-	int i;
-	
+	int sq;
+
 	printf("\n8 ");
-	for (i = 0; i < 64; ++i) {
-		switch (color[i]) {
-			case EMPTY:
+	for (sq = 0; sq < SqLen; ++sq) {
+		switch (color[sq]) {
+			case NoColor:
 				printf(" .");
 				break;
 			case LIGHT:
-				printf(" %c", piece_char[piece[i]]);
+				printf(" %c", piece_char[piece[sq]]);
 				break;
 			case DARK:
-				printf(" %c", piece_char[piece[i]] + ('a' - 'A'));
+				printf(" %c", piece_char[piece[sq]] + ('a' - 'A'));
 				break;
 		}
-		if ((i + 1) % 8 == 0 && i != 63)
-			printf("\n%d ", 7 - ROW(i));
+		if (MapToFile(sq) == FileH && sq != SqH1)
+			printf("\n%d ", Rank1 - MapToRank(sq));
 	}
 	printf("\n\n   a b c d e f g h\n\n");
 }
@@ -277,21 +291,21 @@ void print_board()
 void xboard()
 {
 	int computer_side;
-	char line[256], command[256];
+	char line[TextLen], command[TextLen];
 	int m;
-	int post = 0;
+	int post = PmNone;
 
 	signal(SIGINT, SIG_IGN);
 	printf("\n");
 	init_board();
 	gen();
-	computer_side = EMPTY;
+	computer_side = NoColor;
 	for (;;) {
 		fflush(stdout);
 		if (side == computer_side) {
 			think(post);
-			if (!pv[0][0].u) {
-				computer_side = EMPTY;
+			if (pv[0][0].u == MvVoid) {
+				computer_side = NoColor;
 				continue;
 			}
 			printf("move %s\n", move_str(pv[0][0].b));
@@ -301,7 +315,7 @@ void xboard()
 			print_result();
 			continue;
 		}
-		if (!fgets(line, 256, stdin))
+		if (!fgets(line, TextLen, stdin))
 			return;
 		if (line[0] == '\n')
 			continue;
@@ -317,7 +331,7 @@ void xboard()
 		if (!strcmp(command, "quit"))
 			return;
 		if (!strcmp(command, "force")) {
-			computer_side = EMPTY;
+			computer_side = NoColor;
 			continue;
 		}
 		if (!strcmp(command, "white")) {
@@ -337,19 +351,19 @@ void xboard()
 		if (!strcmp(command, "st")) {
 			sscanf(line, "st %d", &max_time);
 			max_time *= 1000;
-			max_depth = 32;
+			max_depth = MaxLevelDepth;
 			continue;
 		}
 		if (!strcmp(command, "sd")) {
 			sscanf(line, "sd %d", &max_depth);
-			max_time = 1 << 25;
+			max_time = MaxLevelTime;
 			continue;
 		}
 		if (!strcmp(command, "time")) {
 			sscanf(line, "time %d", &max_time);
 			max_time *= 10;
 			max_time /= 30;
-			max_depth = 32;
+			max_depth = MaxLevelDepth;
 			continue;
 		}
 		if (!strcmp(command, "otim")) {
@@ -361,7 +375,7 @@ void xboard()
 		}
 		if (!strcmp(command, "hint")) {
 			think(0);
-			if (!pv[0][0].u)
+			if (pv[0][0].u == MvVoid)
 				continue;
 			printf("Hint: %s\n", move_str(pv[0][0].b));
 			continue;
@@ -384,11 +398,11 @@ void xboard()
 			continue;
 		}
 		if (!strcmp(command, "post")) {
-			post = 2;
+			post = PmXBoard;
 			continue;
 		}
 		if (!strcmp(command, "nopost")) {
-			post = 0;
+			post = PmNone;
 			continue;
 		}
 		m = parse_move(line);
@@ -426,7 +440,7 @@ void print_result()
 		else
 			printf("1/2-1/2 {Stalemate}\n");
 	}
-	else if (reps() == 2)
+	else if (reps() == 3)
 		printf("1/2-1/2 {Draw by repetition}\n");
 	else if (fifty >= 100)
 		printf("1/2-1/2 {Draw by fifty move rule}\n");
@@ -440,65 +454,66 @@ void print_result()
    Then it searches five ply three times. It calculates nodes per
    second from the best time. */
 
-int bench_color[64] = {
-	6, 1, 1, 6, 6, 1, 1, 6,
-	1, 6, 6, 6, 6, 1, 1, 1,
-	6, 1, 6, 1, 1, 6, 1, 6,
-	6, 6, 6, 1, 6, 6, 0, 6,
-	6, 6, 1, 0, 6, 6, 6, 6,
-	6, 6, 0, 6, 6, 6, 0, 6,
-	0, 0, 0, 6, 6, 0, 0, 0,
-	0, 6, 0, 6, 0, 6, 0, 6
+int bench_color[SqLen] = {
+	NoColor, DARK,    DARK,    NoColor, NoColor, DARK,    DARK,    NoColor,
+	DARK,    NoColor, NoColor, NoColor, NoColor, DARK,    DARK,    DARK,
+	NoColor, DARK,    NoColor, DARK,    DARK,    NoColor, DARK,    NoColor,
+	NoColor, NoColor, NoColor, DARK,    NoColor, NoColor, LIGHT,   NoColor,
+	NoColor, NoColor, DARK,    LIGHT,   NoColor, NoColor, NoColor, NoColor,
+	NoColor, NoColor, LIGHT,   NoColor, NoColor, NoColor, LIGHT,   NoColor,
+	LIGHT,   LIGHT,   LIGHT,   NoColor, NoColor, LIGHT,   LIGHT,   LIGHT,
+	LIGHT,   NoColor, LIGHT,   NoColor, LIGHT,   NoColor, LIGHT,   NoColor
 };
 
-int bench_piece[64] = {
-	6, 3, 2, 6, 6, 3, 5, 6,
-	0, 6, 6, 6, 6, 0, 0, 0,
-	6, 0, 6, 4, 0, 6, 1, 6,
-	6, 6, 6, 1, 6, 6, 1, 6,
-	6, 6, 0, 0, 6, 6, 6, 6,
-	6, 6, 0, 6, 6, 6, 0, 6,
-	0, 0, 4, 6, 6, 0, 2, 0,
-	3, 6, 2, 6, 3, 6, 5, 6
+int bench_piece[SqLen] = {
+	NoPiece, ROOK,    BISHOP,  NoPiece, NoPiece, ROOK,    KING,    NoPiece,
+	PAWN,    NoPiece, NoPiece, NoPiece, NoPiece, PAWN,    PAWN,    PAWN,
+	NoPiece, PAWN,    NoPiece, QUEEN,   PAWN,    NoPiece, KNIGHT,  NoPiece,
+	NoPiece, NoPiece, NoPiece, KNIGHT,  NoPiece, NoPiece, KNIGHT,  NoPiece,
+	NoPiece, NoPiece, PAWN,    PAWN,    NoPiece, NoPiece, NoPiece, NoPiece,
+	NoPiece, NoPiece, PAWN,    NoPiece, NoPiece, NoPiece, PAWN,    NoPiece,
+	PAWN,    PAWN,    QUEEN,   NoPiece, NoPiece, PAWN,    BISHOP,  PAWN,
+	ROOK,    NoPiece, BISHOP,  NoPiece, ROOK,    NoPiece, KING,    NoPiece
 };
 
 void bench()
 {
-	int i;
-	int t[3];
+	int trial;
+	int sq;
+	int ms[3];
 	double nps;
 
 	/* setting the position to a non-initial position confuses the opening
 	   book code. */
 	close_book();
 
-	for (i = 0; i < 64; ++i) {
-		color[i] = bench_color[i];
-		piece[i] = bench_piece[i];
+	for (sq = 0; sq < SqLen; ++sq) {
+		color[sq] = bench_color[sq];
+		piece[sq] = bench_piece[sq];
 	}
 	side = LIGHT;
 	xside = DARK;
-	castle = 0;
-	ep = -1;
+	castle = CCemp;
+	ep = SqNil;
 	fifty = 0;
 	ply = 0;
 	hply = 0;
 	set_hash();
 	print_board();
-	max_time = 1 << 25;
+	max_time = MaxLevelTime;
 	max_depth = 5;
-	for (i = 0; i < 3; ++i) {
+	for (trial = 0; trial < 3; ++trial) {
 		think(1);
-		t[i] = get_ms() - start_time;
-		printf("Time: %d ms\n", t[i]);
+		ms[trial] = get_ms() - start_time;
+		printf("Time: %d ms\n", ms[trial]);
 	}
-	if (t[1] < t[0])
-		t[0] = t[1];
-	if (t[2] < t[0])
-		t[0] = t[2];
+	if (ms[1] < ms[0])
+		ms[0] = ms[1];
+	if (ms[2] < ms[0])
+		ms[0] = ms[2];
 	printf("\n");
 	printf("Nodes: %d\n", nodes);
-	printf("Best time: %d ms\n", t[0]);
+	printf("Best time: %d ms\n", ms[0]);
 	if (!ftime_ok) {
 		printf("\n");
 		printf("Your compiler's ftime() function is apparently only accurate\n");
@@ -507,11 +522,11 @@ void bench()
 		printf("\n");
 		return;
 	}
-	if (t[0] == 0) {
+	if (ms[0] == 0) {
 		printf("(invalid)\n");
 		return;
 	}
-	nps = (double)nodes / (double)t[0];
+	nps = (double)nodes / (double)ms[0];
 	nps *= 1000.0;
 
 	/* Score: 1.000 = my Athlon XP 2000+ */
@@ -520,4 +535,77 @@ void bench()
 	init_board();
 	open_book();
 	gen();
+}
+
+static void sync_ms(void)
+{
+  unsigned int t0 = get_ms();
+
+  while (t0 == get_ms())
+    ;
+}
+
+static unsigned int count_legal_moves(void)
+{
+  unsigned int count = 0;
+  unsigned int base = first_move[ply];
+  unsigned int limit = first_move[ply + 1] - base;
+  unsigned int index;
+
+  for (index = 0; index < limit; index++)
+  {
+    if (makemove(gen_dat[base + index].m.b))
+    {
+      count++;
+      takeback();
+    };
+  };
+  return count;
+}
+
+static unsigned long int perft_aux(unsigned int draft)
+{
+  unsigned long int sum;
+
+  if (draft == 0)
+    sum = 1;
+  else
+  {
+    if (ply > 0)
+      gen();
+    if (draft == 1)
+      sum = (unsigned long int) count_legal_moves();
+    else
+    {
+      unsigned int newdraft = draft - 1;
+      unsigned int base = first_move[ply];
+      unsigned int limit = first_move[ply + 1] - base;
+      unsigned int index;
+
+      sum = 0;
+      for (index = 0; index < limit; index++)
+      {
+        if (makemove(gen_dat[base + index].m.b))
+        {
+          sum += perft_aux(newdraft);
+          takeback();
+        };
+      };
+    };
+  };
+  return sum;
+}
+
+void perft(unsigned int draft)
+{
+  unsigned long int sum;
+  int t0, t1;
+  double freq;
+
+  sync_ms();
+  t0 = get_ms();
+  sum = perft_aux(draft);
+  t1 = get_ms();
+  freq = (double) sum / (double) (t1 - t0) * 1.0e3;
+  printf("perft(%d): %lu   %.3lf MHz\n", draft, sum, (freq / 1.0e6));
 }

@@ -55,3 +55,4 @@ void print_board();
 void xboard();
 void print_result();
 void bench();
+void perft(unsigned int draft);
