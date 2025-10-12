@@ -1,5 +1,5 @@
                   Tom Kerrigan's Simple Chess Program (TSCP)
-                         Copyright 2016 Tom Kerrigan
+                         Copyright 2019 Tom Kerrigan
                                     README
 
 TSCP is intended for people who want to learn about chess programming. Its
@@ -65,9 +65,13 @@ David Brownlee
 Uri Blass
 Dann Corbit
 Pedro Castro Elgarresta
+Kristopher Johnson
 
 
                                VERSION HISTORY
+
+Version 1.81c, 2/3/19
+* Fixed the makefile so it compiles the .c files with optimizations.
 
 Version 1.81b, 3/10/16
 * Small revisions to this README file; updated my e-mail address and
