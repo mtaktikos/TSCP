@@ -550,13 +550,6 @@ void takeback()
 	else
 		piece[(int)m.from] = piece[(int)m.to];
 	
-	/* For gating: if this was a Commoner move with gating, clear the from square.
-	   Otherwise the from square was already set with the piece above. */
-	if (piece[(int)m.to] == COMMONER && (m.bits & 64) && !(m.bits & 2)) {
-		color[(int)m.from] = EMPTY;
-		piece[(int)m.from] = EMPTY;
-	}
-	
 	if (hist_dat[hply].capture == EMPTY) {
 		color[(int)m.to] = EMPTY;
 		piece[(int)m.to] = EMPTY;
