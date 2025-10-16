@@ -59,6 +59,7 @@
    8	pushing a pawn 2 squares
    16	pawn move
    32	promote
+   64	gate (for Commoner moves - leave a Commoner behind)
 
    It's union'ed with an integer so two moves can easily
    be compared with each other. */

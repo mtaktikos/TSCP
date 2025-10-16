@@ -208,13 +208,26 @@ void genPiece(int i)
 			if (n == -1)
 				break;
 			if (color[n] == EMPTY) {
-				gen_push(i, n, 0);
+				/* For Commoner moves, generate both gating and non-gating versions */
+				if (piece[i] == COMMONER) {
+					gen_push(i, n, 0);     /* non-gating move */
+					gen_push(i, n, 64);    /* gating move */
+				} else {
+					gen_push(i, n, 0);
+				}
 				if (!slide[piece[i]])
 					break;
 			}
 			else {
-				if (color[n] == xside)
-					gen_push(i, n, 1);
+				if (color[n] == xside) {
+					/* For Commoner captures, also generate both versions */
+					if (piece[i] == COMMONER) {
+						gen_push(i, n, 1);     /* non-gating capture */
+						gen_push(i, n, 65);    /* gating capture (1 + 64) */
+					} else {
+						gen_push(i, n, 1);
+					}
+				}
 				break;
 			}
 		}
@@ -303,8 +316,15 @@ void gen_caps()
 						if (n == -1)
 							break;
 						if (color[n] != EMPTY) {
-							if (color[n] == xside)
-								gen_push(i, n, 1);
+							if (color[n] == xside) {
+								/* For Commoner captures, generate both versions */
+								if (piece[i] == COMMONER) {
+									gen_push(i, n, 1);    /* non-gating capture */
+									gen_push(i, n, 65);   /* gating capture */
+								} else {
+									gen_push(i, n, 1);
+								}
+							}
 							break;
 						}
 						if (!slide[piece[i]])
@@ -473,8 +493,8 @@ BOOL makemove(move_bytes m)
 	else
 		piece[(int)m.to] = piece[(int)m.from];
 	
-	/* Gating: if a Commoner moves, leave another Commoner behind */
-	if (piece[(int)m.to] == COMMONER) {
+	/* Gating: if a Commoner moves with the gate bit set, leave another Commoner behind */
+	if (piece[(int)m.to] == COMMONER && (m.bits & 64)) {
 		color[(int)m.from] = side;
 		piece[(int)m.from] = COMMONER;
 	}
@@ -530,8 +550,9 @@ void takeback()
 	else
 		piece[(int)m.from] = piece[(int)m.to];
 	
-	/* For gating: if this was a Commoner move, clear the from square */
-	if (piece[(int)m.to] == COMMONER && !(m.bits & 2)) {
+	/* For gating: if this was a Commoner move with gating, clear the from square.
+	   Otherwise the from square was already set with the piece above. */
+	if (piece[(int)m.to] == COMMONER && (m.bits & 64) && !(m.bits & 2)) {
 		color[(int)m.from] = EMPTY;
 		piece[(int)m.from] = EMPTY;
 	}

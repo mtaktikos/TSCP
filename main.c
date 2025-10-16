@@ -163,6 +163,8 @@ int main()
 int parse_move(char *s)
 {
 	int from, to, i;
+	int want_gate = 0;
+	int len;
 
 	/* make sure the string looks like a move */
 	if (s[0] < 'a' || s[0] > 'h' ||
@@ -176,27 +178,49 @@ int parse_move(char *s)
 	to = s[2] - 'a';
 	to += 8 * (8 - (s[3] - '0'));
 
+	/* Check if move ends with 'g' for gating */
+	len = strlen(s);
+	if (len > 4 && (s[len-1] == 'g' || s[len-1] == 'G'))
+		want_gate = 1;
+
 	for (i = 0; i < first_move[1]; ++i)
 		if (gen_dat[i].m.b.from == from && gen_dat[i].m.b.to == to) {
 
 			/* if the move is a promotion, handle the promotion piece;
 			   assume that the promotion moves occur consecutively in
 			   gen_dat. */
-			if (gen_dat[i].m.b.bits & 32)
+			if (gen_dat[i].m.b.bits & 32) {
+				int promotion_offset;
 				switch (s[4]) {
 					case 'N':
 					case 'n':
-						return i;
+						promotion_offset = 0;
+						break;
 					case 'B':
 					case 'b':
-						return i + 1;
+						promotion_offset = 1;
+						break;
 					case 'R':
 					case 'r':
-						return i + 2;
+						promotion_offset = 2;
+						break;
 					default:  /* assume it's a queen */
-						return i + 3;
+						promotion_offset = 3;
+						break;
 				}
-			return i;
+				/* Check if the gating flag matches */
+				if (want_gate && (gen_dat[i + promotion_offset].m.b.bits & 64))
+					return i + promotion_offset;
+				else if (!want_gate && !(gen_dat[i + promotion_offset].m.b.bits & 64))
+					return i + promotion_offset;
+			}
+			else {
+				/* Check if the gating flag matches what user specified */
+				if (want_gate && (gen_dat[i].m.b.bits & 64))
+					return i;
+				else if (!want_gate && !(gen_dat[i].m.b.bits & 64))
+					return i;
+			}
 		}
 
 	/* didn't find the move */
@@ -208,7 +232,7 @@ int parse_move(char *s)
 
 char *move_str(move_bytes m)
 {
-	static char str[6];
+	static char str[10];
 
 	char c;
 
@@ -227,19 +251,37 @@ char *move_str(move_bytes m)
 				c = 'q';
 				break;
 		}
-		sprintf(str, "%c%d%c%d%c",
-				COL(m.from) + 'a',
-				8 - ROW(m.from),
-				COL(m.to) + 'a',
-				8 - ROW(m.to),
-				c);
+		if (m.bits & 64) {
+			sprintf(str, "%c%d%c%d%cg",
+					COL(m.from) + 'a',
+					8 - ROW(m.from),
+					COL(m.to) + 'a',
+					8 - ROW(m.to),
+					c);
+		} else {
+			sprintf(str, "%c%d%c%d%c",
+					COL(m.from) + 'a',
+					8 - ROW(m.from),
+					COL(m.to) + 'a',
+					8 - ROW(m.to),
+					c);
+		}
 	}
-	else
-		sprintf(str, "%c%d%c%d",
-				COL(m.from) + 'a',
-				8 - ROW(m.from),
-				COL(m.to) + 'a',
-				8 - ROW(m.to));
+	else {
+		if (m.bits & 64) {
+			sprintf(str, "%c%d%c%dg",
+					COL(m.from) + 'a',
+					8 - ROW(m.from),
+					COL(m.to) + 'a',
+					8 - ROW(m.to));
+		} else {
+			sprintf(str, "%c%d%c%d",
+					COL(m.from) + 'a',
+					8 - ROW(m.from),
+					COL(m.to) + 'a',
+					8 - ROW(m.to));
+		}
+	}
 	return str;
 }
 
@@ -409,22 +451,24 @@ void xboard()
 void print_result()
 {
 	int i;
-	int commoner_count[2] = {0, 0};
 	
-	/* Check if a commoner has been captured */
-	for (i = 0; i < 64; ++i) {
-		if (piece[i] == COMMONER) {
-			commoner_count[color[i]]++;
+	/* Check if a commoner has been captured - this wins the game immediately */
+	for (i = 0; i < hply; ++i) {
+		if (hist_dat[i].capture == COMMONER) {
+			/* A commoner was captured. Determine which side captured it.
+			   The move history alternates sides, so we need to figure out
+			   which side made the capturing move. */
+			int moves_ago = hply - i;
+			/* If moves_ago is odd, the other side made the capture */
+			int capturing_side = (moves_ago % 2 == 1) ? xside : side;
+			
+			if (capturing_side == LIGHT) {
+				printf("1-0 {White wins by capturing a Commoner}\n");
+			} else {
+				printf("0-1 {Black wins by capturing a Commoner}\n");
+			}
+			return;
 		}
-	}
-	
-	if (commoner_count[LIGHT] == 0) {
-		printf("0-1 {Black wins by capturing White's Commoner}\n");
-		return;
-	}
-	if (commoner_count[DARK] == 0) {
-		printf("1-0 {White wins by capturing Black's Commoner}\n");
-		return;
 	}
 
 	/* is there a legal move? */

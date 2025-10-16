@@ -115,20 +115,25 @@ int eval()
 	int i;
 	int f;  /* file */
 	int score[2];  /* each side's score */
-	int commoner_count[2] = {0, 0};
 
-	/* Check if a commoner has been captured - this is a win/loss condition */
-	for (i = 0; i < 64; ++i) {
-		if (piece[i] == COMMONER) {
-			commoner_count[color[i]]++;
+	/* Check if a commoner has been captured - this is a win/loss condition.
+	   With the new rules, capturing a single commoner wins the game. */
+	for (i = 0; i < hply; ++i) {
+		if (hist_dat[i].capture == COMMONER) {
+			/* A commoner was captured. The side that made this move won.
+			   We need to figure out who made the move. */
+			/* Since we alternate sides, if hply is even, the current side
+			   is the same as at the start. We need to count back from hply. */
+			int moves_ago = hply - i;
+			int capturing_side = (moves_ago % 2 == 0) ? side : xside;
+			
+			if (capturing_side == side)
+				return 10000;  /* We captured opponent's commoner, we win */
+			else
+				return -10000;  /* Opponent captured our commoner, we lose */
 		}
 	}
-	
-	/* If a side has no commoner, they lose */
-	if (commoner_count[side] == 0)
-		return -10000;
-	if (commoner_count[xside] == 0)
-		return 10000;
+
 
 	/* this is the first pass: set up pawn_rank, piece_mat, and pawn_mat. */
 	for (i = 0; i < 10; ++i) {
