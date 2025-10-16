@@ -93,18 +93,12 @@ void set_hash()
 }
 
 
-/* in_check() returns TRUE if side s is in check and FALSE
-   otherwise. It just scans the board to find side s's king
-   and calls attack() to see if it's being attacked. */
+/* in_check() is no longer used since there are no kings,
+   only Commoners. We always return FALSE. */
 
 BOOL in_check(int s)
 {
-	int i;
-
-	for (i = 0; i < 64; ++i)
-		if (piece[i] == KING && color[i] == s)
-			return attack(i, s ^ 1);
-	return TRUE;  /* shouldn't get here */
+	return FALSE;
 }
 
 
@@ -157,18 +151,7 @@ BOOL attack(int sq, int s)
 
 void genCastles()
 {
-	if (side == LIGHT) {
-		if (castle & 1)
-			gen_push(E1, G1, 2);
-		if (castle & 2)
-			gen_push(E1, C1, 2);
-	}
-	else {
-		if (castle & 4)
-			gen_push(E8, G8, 2);
-		if (castle & 8)
-			gen_push(E8, C8, 2);
-	}
+	/* Castling is no longer possible without kings */
 }
 
 void genEnPassant()
@@ -489,8 +472,16 @@ BOOL makemove(move_bytes m)
 		piece[(int)m.to] = m.promote;
 	else
 		piece[(int)m.to] = piece[(int)m.from];
-	color[(int)m.from] = EMPTY;
-	piece[(int)m.from] = EMPTY;
+	
+	/* Gating: if a Commoner moves, leave another Commoner behind */
+	if (piece[(int)m.to] == COMMONER) {
+		color[(int)m.from] = side;
+		piece[(int)m.from] = COMMONER;
+	}
+	else {
+		color[(int)m.from] = EMPTY;
+		piece[(int)m.from] = EMPTY;
+	}
 
 	/* erase the pawn if this is an en passant move */
 	if (m.bits & 4) {
@@ -538,6 +529,13 @@ void takeback()
 		piece[(int)m.from] = PAWN;
 	else
 		piece[(int)m.from] = piece[(int)m.to];
+	
+	/* For gating: if this was a Commoner move, clear the from square */
+	if (piece[(int)m.to] == COMMONER && !(m.bits & 2)) {
+		color[(int)m.from] = EMPTY;
+		piece[(int)m.from] = EMPTY;
+	}
+	
 	if (hist_dat[hply].capture == EMPTY) {
 		color[(int)m.to] = EMPTY;
 		piece[(int)m.to] = EMPTY;

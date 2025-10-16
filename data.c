@@ -150,7 +150,7 @@ int castle_mask[64] = {
 
 /* the piece letters, for print_board() */
 char piece_char[6] = {
-	'P', 'N', 'B', 'R', 'Q', 'K'
+	'P', 'N', 'B', 'R', 'Q', 'C'
 };
 
 

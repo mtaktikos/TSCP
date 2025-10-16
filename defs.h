@@ -22,7 +22,7 @@
 #define BISHOP			2
 #define ROOK			3
 #define QUEEN			4
-#define KING			5
+#define COMMONER		5
 
 #define EMPTY			6
 
