@@ -409,6 +409,23 @@ void xboard()
 void print_result()
 {
 	int i;
+	int commoner_count[2] = {0, 0};
+	
+	/* Check if a commoner has been captured */
+	for (i = 0; i < 64; ++i) {
+		if (piece[i] == COMMONER) {
+			commoner_count[color[i]]++;
+		}
+	}
+	
+	if (commoner_count[LIGHT] == 0) {
+		printf("0-1 {Black wins by capturing White's Commoner}\n");
+		return;
+	}
+	if (commoner_count[DARK] == 0) {
+		printf("1-0 {White wins by capturing Black's Commoner}\n");
+		return;
+	}
 
 	/* is there a legal move? */
 	for (i = 0; i < first_move[1]; ++i)
@@ -417,14 +434,8 @@ void print_result()
 			break;
 		}
 	if (i == first_move[1]) {
-		if (in_check(side)) {
-			if (side == LIGHT)
-				printf("0-1 {Black mates}\n");
-			else
-				printf("1-0 {White mates}\n");
-		}
-		else
-			printf("1/2-1/2 {Stalemate}\n");
+		/* No legal moves and no check means stalemate */
+		printf("1/2-1/2 {Stalemate}\n");
 	}
 	else if (reps() == 2)
 		printf("1/2-1/2 {Draw by repetition}\n");

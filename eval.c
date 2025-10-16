@@ -23,7 +23,7 @@
 
 /* the values of the pieces */
 int piece_value[6] = {
-	100, 300, 300, 500, 900, 0
+	100, 300, 300, 500, 900, 600
 };
 
 /* The "pcsq" arrays are piece/square tables. They're values
@@ -115,6 +115,20 @@ int eval()
 	int i;
 	int f;  /* file */
 	int score[2];  /* each side's score */
+	int commoner_count[2] = {0, 0};
+
+	/* Check if a commoner has been captured - this is a win/loss condition */
+	for (i = 0; i < 64; ++i) {
+		if (piece[i] == COMMONER) {
+			commoner_count[color[i]]++;
+		}
+	}
+	
+	/* If a side has no commoner, they lose */
+	if (commoner_count[side] == 0)
+		return -10000;
+	if (commoner_count[xside] == 0)
+		return 10000;
 
 	/* this is the first pass: set up pawn_rank, piece_mat, and pawn_mat. */
 	for (i = 0; i < 10; ++i) {
@@ -171,11 +185,8 @@ int eval()
 					if (ROW(i) == 1)
 						score[LIGHT] += ROOK_ON_SEVENTH_BONUS;
 					break;
-				case KING:
-					if (piece_mat[DARK] <= 1200)
-						score[LIGHT] += king_endgame_pcsq[i];
-					else
-						score[LIGHT] += eval_light_king(i);
+				case COMMONER:
+					/* Commoner uses queen movement but simpler evaluation */
 					break;
 			}
 		}
@@ -200,11 +211,8 @@ int eval()
 					if (ROW(i) == 6)
 						score[DARK] += ROOK_ON_SEVENTH_BONUS;
 					break;
-				case KING:
-					if (piece_mat[LIGHT] <= 1200)
-						score[DARK] += king_endgame_pcsq[flip[i]];
-					else
-						score[DARK] += eval_dark_king(i);
+				case COMMONER:
+					/* Commoner uses queen movement but simpler evaluation */
 					break;
 			}
 		}
