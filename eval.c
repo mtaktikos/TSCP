@@ -23,7 +23,7 @@
 
 /* the values of the pieces */
 int piece_value[6] = {
-	100, 300, 300, 500, 900, 600
+	100, 300, 300, 500, 900, -900
 };
 
 /* The "pcsq" arrays are piece/square tables. They're values

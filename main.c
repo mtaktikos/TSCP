@@ -41,7 +41,7 @@ int main()
 	int m;
 
 	printf("\n");
-	printf("Tom Kerrigan's Simple Chess Program (TSCP)\n");
+	printf("Michael Taktikos based on Tom Kerrigan's Simple Chess Program (TSCP)\n");
 	printf("version 1.81b, 3/10/16\n");
 	printf("Copyright 2016 Tom Kerrigan\n");
 	printf("\n");
