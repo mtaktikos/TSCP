@@ -1,6 +1,6 @@
-# Commoner Chess Variant
+# Battlekings Chess Variant
 
-This is a modified version of TSCP (Tom Kerrigan's Simple Chess Program) that implements a fairy chess variant with the following rules:
+This is a modified version of TSCP (Tom Kerrigan's Simple Chess Program) that implements a fairy chess variant called "Battlekings" with the following rules:
 
 ## Changes from Standard Chess
 
@@ -14,20 +14,26 @@ This is a modified version of TSCP (Tom Kerrigan's Simple Chess Program) that im
 - The in_check() function always returns FALSE
 - Castling is not possible (removed since there are no kings)
 
-### 3. Optional Gating Mechanic
-- When a Commoner moves, the player can CHOOSE whether to gate or not
-- **Gating move** (append 'g' to move notation): Creates a new Commoner on the departure square
-  - Example: `e1e2g` - Commoner moves from e1 to e2, leaving a Commoner on e1
-- **Non-gating move** (normal move notation): Leaves the departure square empty
-  - Example: `e1e2` - Commoner moves from e1 to e2, e1 becomes empty
-- This allows strategic decisions about whether to multiply Commoners or keep mobility
+### 3. Automatic Gating Mechanic
+- When pieces move (except Commoners), they automatically leave behind a specific piece:
+  - **Pawns** leave **Knights** behind
+  - **Knights** leave **Bishops** behind
+  - **Bishops** leave **Rooks** behind
+  - **Rooks** leave **Queens** behind
+  - **Queens** leave **Commoners** behind
+  - **Commoners** do NOT gate (they make normal moves like Kings)
+- Gating is automatic and mandatory for all pieces except Commoners
+- Example: `e2e4` - Pawn moves from e2 to e4, automatically leaving a Knight on e2
 
-### 4. Win Condition
+### 4. No En Passant
+- En passant captures are not allowed in this variant
+
+### 5. Win Condition
 - The game is won by capturing **ANY** of the opponent's Commoners (not all of them)
 - As soon as a Commoner is captured, the game ends immediately
 - The capturing side wins
 
-### 5. Stalemate
+### 6. Stalemate
 - If a player has no legal moves but still has Commoners, it's a stalemate (draw)
 - Draw by repetition and fifty-move rule still apply
 
@@ -45,7 +51,7 @@ Starting position:
 1  R N B Q C B N R
 ```
 
-After white plays e2-e4 and e1-e2g (commoner move with gating):
+After white plays e2-e4 (pawn move with automatic gating):
 ```
 8  r n b q c b n r
 7  p p p p p p p p
@@ -53,32 +59,46 @@ After white plays e2-e4 and e1-e2g (commoner move with gating):
 5  . . . . . . . .
 4  . . . . P . . .
 3  . . . . . . . .
-2  P P P P C P P P
+2  P P P P N P P P
 1  R N B Q C B N R
 ```
 
-Note: There are now TWO white Commoners - one on e1 (gated) and one on e2 (moved to).
+Note: The pawn moved to e4 and automatically left a Knight on e2.
 
-After black plays e7-e5 and e8-e7 (commoner move WITHOUT gating):
+After black plays c7-c5 (pawn move with automatic gating):
 ```
-8  r n b q . b n r
-7  p p p p c p p p
+8  r n b q c b n r
+7  p p n p p p p p
 6  . . . . . . . .
-5  . . . . p . . .
+5  . . p . . . . .
 4  . . . . P . . .
 3  . . . . . . . .
-2  P P P P C P P P
+2  P P P P N P P P
 1  R N B Q C B N R
 ```
 
-Note: Black still has only ONE commoner - it moved from e8 to e7, leaving e8 empty.
+Note: Black's pawn moved to c5 and automatically left a Knight on c7.
+
+After white plays b1-c3 (knight move with automatic gating):
+```
+8  r n b q c b n r
+7  p p n p p p p p
+6  . . . . . . . .
+5  . . p . . . . .
+4  . . . . P . . .
+3  . . N . . . . .
+2  P P P P N P P P
+1  R B B Q C B N R
+```
+
+Note: The Knight moved to c3 and automatically left a Bishop on b1.
 
 ## Move Notation
 
-- Standard moves: `e2e4` (piece moves from e2 to e4)
-- Gating Commoner moves: `e1e2g` (Commoner moves from e1 to e2, gates on e1)
-- Non-gating Commoner moves: `e1e2` (Commoner moves from e1 to e2, no gating)
-- Captures work the same way - append 'g' to gate or omit it to not gate
+- Standard moves: `e2e4` (piece moves from e2 to e4, automatically gating if applicable)
+- No special notation needed - gating is automatic for Pawns, Knights, Bishops, Rooks, and Queens
+- Commoner moves: `e1e2` (Commoner moves from e1 to e2, no gating)
+- Captures work the same way
 
 ## Building
 

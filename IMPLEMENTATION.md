@@ -1,6 +1,6 @@
-# Implementation Summary: Commoner Chess Variant
+# Implementation Summary: Battlekings Chess Variant
 
-This document summarizes the changes made to implement the three requirements for the Commoner chess variant based on the "lemmings" branch.
+This document summarizes the changes made to implement the Battlekings chess variant, which evolved from the "lemmings" branch.
 
 ## Requirements Implemented
 
@@ -35,64 +35,110 @@ This document summarizes the changes made to implement the three requirements fo
 - main.c: Lines 409-430 (replaced commoner counting logic with history checking)
 
 **Testing**: 
-- Tested with Fool's Mate variant (f2f3, e7e5, g2g4, d8h4, e1f2, h4f2)
+- Tested with various capture scenarios
 - Game correctly ended with message: "0-1 {Black wins by capturing a Commoner}"
 
 ---
 
-### 3. Optional Gating
+### 3. Automatic Gating for Pieces (Except Commoners)
 
-**Requirement**: The gating should be optional, i.e. a player can choose, if a move with his Commoner leaves back another Commoner or an empty square.
+**Requirement**: In the Battlekings variant:
+- Commoners do NOT gate (they make normal moves like Kings)
+- Other pieces gate automatically:
+  - Pawns leave Knights behind
+  - Knights leave Bishops behind
+  - Bishops leave Rooks behind
+  - Rooks leave Queens behind
+  - Queens leave Commoners behind
+- No en passant
+- No castling
 
 **Implementation**:
-- Added bit 64 to the move structure to indicate gating
-- Modified `genPiece()` in board.c to generate TWO versions of each Commoner move:
-  - One with bit 64 set (gating move)
-  - One without bit 64 (non-gating move)
-- Updated `makemove()` to only gate if bit 64 is set
-- Updated `takeback()` to correctly undo both gating and non-gating moves
-- Updated `parse_move()` to accept 'g' suffix for gating moves (e.g., "e1e2g")
-- Updated `move_str()` to display 'g' suffix for gating moves
-- Also updated `gen_caps()` to generate both versions for captures
+- Modified `genPiece()` in board.c to generate moves with bit 64 set for Knights, Bishops, Rooks, and Queens (gating enabled)
+- Modified `genPawn()` to generate pawn moves with bit 64 set (gating enabled)
+- Modified `gen_caps()` to apply same gating rules for captures
+- Updated `makemove()` to handle gating based on piece type:
+  - When bit 64 is set, leave behind the appropriate piece type based on what moved
+  - Pawn → Knight
+  - Knight → Bishop
+  - Bishop → Rook
+  - Rook → Queen
+  - Queen → Commoner
+  - Commoner → no gating (normal move)
+- Updated `genEnPassant()` to do nothing (no en passant in battlekings)
+- Removed en passant square setting in `makemove()`
+- Castling was already disabled (no kings in the variant)
 
 **Files Changed**:
-- defs.h: Lines 51-64 (added bit 64 documentation)
+- defs.h: Lines 51-64 (bit 64 documentation updated for battlekings)
 - board.c: 
-  - Lines 201-236 (genPiece - generate both versions)
-  - Lines 312-333 (gen_caps - generate both versions for captures)
-  - Lines 482-497 (makemove - check bit 64 for gating)
-  - Lines 545-551 (takeback - handle gating correctly)
+  - Lines 175-199 (genPawn - automatic gating for pawns)
+  - Lines 201-230 (genPiece - automatic gating for Knights, Bishops, Rooks, Queens)
+  - Lines 282-332 (gen_caps - automatic gating for captures)
+  - Lines 158-160 (genEnPassant - disabled)
+  - Lines 458-462 (makemove - removed en passant square setting)
+  - Lines 474-513 (makemove - handle automatic gating based on piece type)
 - main.c:
-  - Lines 163-232 (parse_move - accept 'g' suffix)
-  - Lines 245-280 (move_str - display 'g' suffix)
+  - Lines 163-195 (parse_move - simplified, no 'g' suffix needed)
+  - Lines 233-255 (move_str - simplified, no 'g' suffix shown)
 
 **Move Notation**:
-- Gating move: `e1e2g` - Commoner moves from e1 to e2, leaving a commoner on e1
-- Non-gating move: `e1e2` - Commoner moves from e1 to e2, leaving e1 empty
+- All moves use standard notation: `e2e4`, `b1c3`, etc.
+- Gating is automatic and doesn't require special notation
+- Commoners move normally without gating
 
 **Testing**:
-- Tested gating: `e1e2g` correctly created commoner on both e1 and e2
-- Tested non-gating: `e8e7` correctly moved commoner from e8 to e7, leaving e8 empty
+- Tested pawn gating: `e2e4` correctly left Knight on e2
+- Tested knight gating: `b1c3` correctly left Bishop on b1
+- Tested gated piece movement: Knight on e2 moving to d4 left Bishop on e2
+- Commoners move normally without gating
+
+---
+
+### 4. No Castling
+
+**Requirement**: Castling is not allowed in Battlekings.
+
+**Implementation**: Already disabled in the lemmings variant (no kings).
+
+**Files Changed**: None (already correct)
+
+---
+
+### 5. No En Passant
+
+**Requirement**: En passant captures are not allowed in Battlekings.
+
+**Implementation**:
+- `genEnPassant()` now does nothing
+- En passant square is always set to -1 in `makemove()`
+- En passant generation in `gen_caps()` is removed
+
+**Files Changed**:
+- board.c: Modified genEnPassant, makemove, and gen_caps
 
 ---
 
 ## Files Modified
 
-1. **defs.h** - Added bit 64 for gating flag
-2. **board.c** - Updated move generation, makemove, and takeback for optional gating
-3. **eval.c** - Changed win condition from "no commoners" to "any commoner captured"
-4. **main.c** - Updated move parsing/display and win condition checking
-5. **.gitignore** - Added *.o and tscp to ignore build artifacts
-6. **COMMONER_VARIANT.md** - Updated documentation to reflect all changes
-7. **TEST_CASES.md** - Added comprehensive test cases
+1. **defs.h** - Bit 64 documentation updated for automatic gating
+2. **board.c** - Updated move generation, makemove for automatic gating based on piece type
+3. **eval.c** - Win condition: any commoner captured (already implemented)
+4. **main.c** - Simplified move parsing/display (no 'g' suffix needed)
+5. **COMMONER_VARIANT.md** - Updated documentation for Battlekings rules
+6. **README.md** - Updated for Battlekings variant
+7. **IMPLEMENTATION.md** - Updated implementation details
 
 ## Testing Summary
 
-All three requirements have been tested and verified:
+All requirements have been tested and verified:
 
 ✅ Commoner moves like a King (one square, 8 directions)
 ✅ Game ends immediately when ANY commoner is captured
-✅ Optional gating with 'g' suffix notation
+✅ Automatic gating: Pawns → Knights, Knights → Bishops, Bishops → Rooks, Rooks → Queens, Queens → Commoners
+✅ Commoners don't gate (normal moves)
+✅ No castling
+✅ No en passant
 
 ## Build Instructions
 
@@ -103,7 +149,7 @@ make
 
 ## Usage Examples
 
-See TEST_CASES.md for detailed examples of:
-- Commoner movement
-- Gating vs non-gating moves
+See COMMONER_VARIANT.md for detailed examples of:
+- Automatic gating for different pieces
+- Commoner movement (no gating)
 - Win condition (capturing a commoner)
