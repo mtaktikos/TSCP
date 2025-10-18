@@ -19,7 +19,7 @@ Initial position:
 1  R N B Q C B N R
 ```
 
-The white commoner on e1 can move to: d1, d2, e2, f2, f1 (5 squares adjacent to e1, when those squares are empty or have enemy pieces).
+The white commoner on e1 can move to adjacent squares when they are empty or contain enemy pieces. In the initial position, the Commoner can move to d2, e2, or f2 (3 available squares), since d1, e1, and f1 are occupied by friendly pieces.
 
 ## Test 2: Automatic Gating for Pieces
 
@@ -133,8 +133,8 @@ echo -e "e2e4\nd\nbye" | ./tscp
 # Test knight gating bishop
 echo -e "b1c3\nd\nbye" | ./tscp
 
-# Test gated piece also gates
-echo -e "e2e4\non\ne2d4\nd\nbye" | ./tscp
+# Test gated piece also gates (after letting computer make a move for black)
+echo -e "e2e4\non\noff\ne2d4\nd\nbye" | ./tscp
 
 # Let computer play to see full variant in action
 echo -e "on\non\non\non\nd\nbye" | ./tscp
