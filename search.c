@@ -98,9 +98,9 @@ int search(int alpha, int beta, int depth)
 	/* if this isn't the root of the search tree (where we have
 	   to pick a move and can't simply return 0) then check to
 	   see if the position is a repeat. if so, we can assume that
-	   this line is a draw and return 0. */
+	   this line is a loss for the side to move and return a negative score. */
 	if (ply && reps())
-		return 0;
+		return -10000 + ply;
 
 	/* are we too deep? */
 	if (ply >= MAX_PLY - 1)
@@ -148,7 +148,7 @@ int search(int alpha, int beta, int depth)
 		if (c)
 			return -10000 + ply;
 		else
-			return 0;
+			return -10000 + ply;  /* stalemate is also a loss */
 	}
 
 	/* fifty move draw rule */

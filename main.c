@@ -451,11 +451,21 @@ void print_result()
 			break;
 		}
 	if (i == first_move[1]) {
-		/* No legal moves and no check means stalemate */
-		printf("1/2-1/2 {Stalemate}\n");
+		/* No legal moves - stalemate is a loss for the side to move */
+		if (side == LIGHT) {
+			printf("0-1 {White loses by stalemate}\n");
+		} else {
+			printf("1-0 {Black loses by stalemate}\n");
+		}
 	}
-	else if (reps() == 2)
-		printf("1/2-1/2 {Draw by repetition}\n");
+	else if (reps() == 2) {
+		/* 2-fold repetition is a loss for the side to move */
+		if (side == LIGHT) {
+			printf("0-1 {White loses by 2-fold repetition}\n");
+		} else {
+			printf("1-0 {Black loses by 2-fold repetition}\n");
+		}
+	}
 	else if (fifty >= 100)
 		printf("1/2-1/2 {Draw by fifty move rule}\n");
 }
