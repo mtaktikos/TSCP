@@ -99,7 +99,7 @@ int search(int alpha, int beta, int depth)
 	   to pick a move and can't simply return 0) then check to
 	   see if the position is a repeat. if so, we can assume that
 	   this line is a loss for the side to move and return a negative score. */
-	if (ply && reps())
+	if (ply && reps() >= 1)
 		return -10000 + ply;
 
 	/* are we too deep? */

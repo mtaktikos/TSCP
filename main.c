@@ -458,7 +458,7 @@ void print_result()
 			printf("1-0 {Black loses by stalemate}\n");
 		}
 	}
-	else if (reps() == 2) {
+	else if (reps() >= 1) {
 		/* 2-fold repetition is a loss for the side to move */
 		if (side == LIGHT) {
 			printf("0-1 {White loses by 2-fold repetition}\n");
