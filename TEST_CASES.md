@@ -1,10 +1,11 @@
-# Test Cases for Commoner Variant
+# Test Cases for Battlekings Variant
 
-This file contains test cases that demonstrate the three main features of the Commoner variant.
+This file contains test cases that demonstrate the main features of the Battlekings variant.
 
-## Test 1: Commoner Movement (King-like, one square)
+## Test 1: Commoner Movement (King-like, one square, NO gating)
 
 The commoner moves like a king - one square in any of 8 directions (orthogonal and diagonal).
+Commoners do NOT gate when they move (they leave the departure square empty).
 
 Initial position:
 ```
@@ -18,85 +19,101 @@ Initial position:
 1  R N B Q C B N R
 ```
 
-The white commoner on e1 can move to: d1, d2, e2, f2, f1 (5 squares adjacent to e1).
+The white commoner on e1 can move to: d1, d2, e2, f2, f1 (5 squares adjacent to e1, when those squares are empty or have enemy pieces).
 
-## Test 2: Optional Gating
+## Test 2: Automatic Gating for Pieces
 
-Players can choose whether to gate (leave a commoner behind) or not when moving a commoner.
+In Battlekings, pieces automatically gate (leave behind another piece) when they move:
+- Pawns leave Knights
+- Knights leave Bishops
+- Bishops leave Rooks
+- Rooks leave Queens
+- Queens leave Commoners
+- Commoners do NOT gate
 
-### Test 2a: Gating Move (with 'g' suffix)
+### Test 2a: Pawn Gates Knight
 
 Input sequence:
 ```
 e2e4
-e7e5
-e1e2g
 ```
 
-Result after `e1e2g`:
+Result after `e2e4`:
 ```
 8  r n b q c b n r
-7  p p p p . p p p
+7  p p p p p p p p
 6  . . . . . . . .
-5  . . . . p . . .
+5  . . . . . . . .
 4  . . . . P . . .
 3  . . . . . . . .
-2  P P P P C P P P
+2  P P P P N P P P
 1  R N B Q C B N R
 ```
 
-Note: White commoner is on BOTH e1 (gated) and e2 (moved to).
+Note: Pawn moved from e2 to e4, and automatically left a Knight on e2.
 
-### Test 2b: Non-gating Move (without 'g' suffix)
+### Test 2b: Knight Gates Bishop
 
-Continuing from above, black plays:
+Continuing from above:
 ```
-e8e7
+b1c3
 ```
 
 Result:
 ```
-8  r n b q . b n r
-7  p p p p c p p p
+8  r n b q c b n r
+7  p p p p p p p p
 6  . . . . . . . .
-5  . . . . p . . .
+5  . . . . . . . .
 4  . . . . P . . .
-3  . . . . . . . .
-2  P P P P C P P P
-1  R N B Q C B N R
+3  . . N . . . . .
+2  P P P P N P P P
+1  R B B Q C B N R
 ```
 
-Note: Black commoner moved from e8 to e7, e8 is now EMPTY (no gating).
+Note: Knight moved from b1 to c3, and automatically left a Bishop on b1.
+
+### Test 2c: Gated Knight Also Gates
+
+The gated Knight on e2 can move and will gate a Bishop:
+```
+e2d4
+```
+
+Result:
+```
+8  r n b q c b n r
+7  p p p p p p p p
+6  . . . . . . . .
+5  . . . . . . . .
+4  . . . N P . . .
+3  . . N . . . . .
+2  P P P P B P P P
+1  R B B Q C B N R
+```
+
+Note: The gated Knight moved from e2 to d4 and left a Bishop on e2.
 
 ## Test 3: Win Condition (Capturing ANY commoner wins)
 
 When ANY commoner is captured, the game ends immediately and the capturing side wins.
 
-Input sequence (Fool's Mate variant):
+The exact scenario will depend on the game progression, but the principle is:
+- As soon as any Commoner is captured, the game ends
+- The side that captured the Commoner wins
+
+## Test 4: Commoner Does NOT Gate
+
+When a Commoner moves, it does NOT leave behind another piece.
+
+Input sequence:
 ```
-f2f3
-e7e5
-g2g4
-d8h4
-e1f2
-h4f2
+g1f3
+e7e6
+e1g1
 ```
 
-Result:
-```
-0-1 {Black wins by capturing a Commoner}
-
-8  r n b . c b n r
-7  p p p p . p p p
-6  . . . . . . . .
-5  . . . . p . . .
-4  . . . . . . P .
-3  . . . . . P . .
-2  P P P P P q . P
-1  R N B Q . B N R
-```
-
-Note: The game ended immediately when black's queen captured white's commoner on f2. Black wins!
+After these moves, the Commoner will have moved from e1 to g1, and e1 will be empty (no gating).
 
 ## Running Tests
 
@@ -110,12 +127,15 @@ To run these tests manually:
 To verify the implementation:
 
 ```bash
-# Test gating
-echo -e "e2e4\ne7e5\ne1e2g\nd\nbye" | ./tscp
+# Test pawn gating knight
+echo -e "e2e4\nd\nbye" | ./tscp
 
-# Test non-gating
-echo -e "e2e4\ne7e5\ne1e2g\ne8e7\nd\nbye" | ./tscp
+# Test knight gating bishop
+echo -e "b1c3\nd\nbye" | ./tscp
 
-# Test win condition
-echo -e "f2f3\ne7e5\ng2g4\nd8h4\ne1f2\nh4f2\nd\nbye" | ./tscp
+# Test gated piece also gates
+echo -e "e2e4\non\ne2d4\nd\nbye" | ./tscp
+
+# Let computer play to see full variant in action
+echo -e "on\non\non\non\nd\nbye" | ./tscp
 ```
