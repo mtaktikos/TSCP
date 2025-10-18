@@ -163,8 +163,6 @@ int main()
 int parse_move(char *s)
 {
 	int from, to, i;
-	int want_gate = 0;
-	int len;
 
 	/* make sure the string looks like a move */
 	if (s[0] < 'a' || s[0] > 'h' ||
@@ -178,10 +176,8 @@ int parse_move(char *s)
 	to = s[2] - 'a';
 	to += 8 * (8 - (s[3] - '0'));
 
-	/* Check if move ends with 'g' for gating */
-	len = strlen(s);
-	if (len > 4 && (s[len-1] == 'g' || s[len-1] == 'G'))
-		want_gate = 1;
+	/* In battlekings, gating is automatic for pieces that gate,
+	   so we just match from/to without checking 'g' suffix */
 
 	for (i = 0; i < first_move[1]; ++i)
 		if (gen_dat[i].m.b.from == from && gen_dat[i].m.b.to == to) {
@@ -208,18 +204,10 @@ int parse_move(char *s)
 						promotion_offset = 3;
 						break;
 				}
-				/* Check if the gating flag matches */
-				if (want_gate && (gen_dat[i + promotion_offset].m.b.bits & 64))
-					return i + promotion_offset;
-				else if (!want_gate && !(gen_dat[i + promotion_offset].m.b.bits & 64))
-					return i + promotion_offset;
+				return i + promotion_offset;
 			}
 			else {
-				/* Check if the gating flag matches what user specified */
-				if (want_gate && (gen_dat[i].m.b.bits & 64))
-					return i;
-				else if (!want_gate && !(gen_dat[i].m.b.bits & 64))
-					return i;
+				return i;
 			}
 		}
 
@@ -251,36 +239,21 @@ char *move_str(move_bytes m)
 				c = 'q';
 				break;
 		}
-		if (m.bits & 64) {
-			sprintf(str, "%c%d%c%d%cg",
-					COL(m.from) + 'a',
-					8 - ROW(m.from),
-					COL(m.to) + 'a',
-					8 - ROW(m.to),
-					c);
-		} else {
-			sprintf(str, "%c%d%c%d%c",
-					COL(m.from) + 'a',
-					8 - ROW(m.from),
-					COL(m.to) + 'a',
-					8 - ROW(m.to),
-					c);
-		}
+		/* In battlekings, gating is automatic, so don't show 'g' suffix */
+		sprintf(str, "%c%d%c%d%c",
+				COL(m.from) + 'a',
+				8 - ROW(m.from),
+				COL(m.to) + 'a',
+				8 - ROW(m.to),
+				c);
 	}
 	else {
-		if (m.bits & 64) {
-			sprintf(str, "%c%d%c%dg",
-					COL(m.from) + 'a',
-					8 - ROW(m.from),
-					COL(m.to) + 'a',
-					8 - ROW(m.to));
-		} else {
-			sprintf(str, "%c%d%c%d",
-					COL(m.from) + 'a',
-					8 - ROW(m.from),
-					COL(m.to) + 'a',
-					8 - ROW(m.to));
-		}
+		/* In battlekings, gating is automatic, so don't show 'g' suffix */
+		sprintf(str, "%c%d%c%d",
+				COL(m.from) + 'a',
+				8 - ROW(m.from),
+				COL(m.to) + 'a',
+				8 - ROW(m.to));
 	}
 	return str;
 }

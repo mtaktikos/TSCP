@@ -156,44 +156,36 @@ void genCastles()
 
 void genEnPassant()
 {
-	if (ep != -1) {
-		if (side == LIGHT) {
-			if (COL(ep) != 0 && color[ep + 7] == LIGHT && piece[ep + 7] == PAWN)
-				gen_push(ep + 7, ep, 21);
-			if (COL(ep) != 7 && color[ep + 9] == LIGHT && piece[ep + 9] == PAWN)
-				gen_push(ep + 9, ep, 21);
-		}
-		else {
-			if (COL(ep) != 0 && color[ep - 9] == DARK && piece[ep - 9] == PAWN)
-				gen_push(ep - 9, ep, 21);
-			if (COL(ep) != 7 && color[ep - 7] == DARK && piece[ep - 7] == PAWN)
-				gen_push(ep - 7, ep, 21);
-		}
-	}
+	/* No en passant in battlekings variant */
 }
 
 void genPawn(int i)
 {
+	/* In battlekings variant, Pawns gate (leave Knights behind)
+	   Bit 64 = gating flag, bit 16 = pawn move, bit 1 = capture
+	   So pawn moves with gating: 16 + 64 = 80
+	   Pawn captures with gating: 17 + 64 = 81 (bit 1 + 16 + 64)
+	   Pawn double moves with gating: 24 + 64 = 88 (bit 8 + 16 + 64) */
 	if (side == LIGHT) {
 		if (COL(i) != 0 && color[i - 9] == DARK)
-			gen_push(i, i - 9, 17);
+			gen_push(i, i - 9, 81);  /* capture with gating */
 		if (COL(i) != 7 && color[i - 7] == DARK)
-			gen_push(i, i - 7, 17);
+			gen_push(i, i - 7, 81);  /* capture with gating */
 		if (color[i - 8] == EMPTY) {
-			gen_push(i, i - 8, 16);
+			gen_push(i, i - 8, 80);  /* move with gating */
 			if (i >= 48 && color[i - 16] == EMPTY)
-				gen_push(i, i - 16, 24);
+				gen_push(i, i - 16, 88);  /* double move with gating */
 		}
 	}
 	else {
 		if (COL(i) != 0 && color[i + 7] == LIGHT)
-			gen_push(i, i + 7, 17);
+			gen_push(i, i + 7, 81);  /* capture with gating */
 		if (COL(i) != 7 && color[i + 9] == LIGHT)
-			gen_push(i, i + 9, 17);
+			gen_push(i, i + 9, 81);  /* capture with gating */
 		if (color[i + 8] == EMPTY) {
-			gen_push(i, i + 8, 16);
+			gen_push(i, i + 8, 80);  /* move with gating */
 			if (i <= 15 && color[i + 16] == EMPTY)
-				gen_push(i, i + 16, 24);
+				gen_push(i, i + 16, 88);  /* double move with gating */
 		}
 	}
 }
@@ -208,24 +200,27 @@ void genPiece(int i)
 			if (n == -1)
 				break;
 			if (color[n] == EMPTY) {
-				/* For Commoner moves, generate both gating and non-gating versions */
+				/* In battlekings variant:
+				   - Commoners do NOT gate (normal moves only)
+				   - Knights, Bishops, Rooks, and Queens DO gate (mandatory)
+				   Bit 64 = gating flag */
 				if (piece[i] == COMMONER) {
-					gen_push(i, n, 0);     /* non-gating move */
-					gen_push(i, n, 64);    /* gating move */
-				} else {
-					gen_push(i, n, 0);
+					gen_push(i, n, 0);     /* Commoners don't gate */
+				} else if (piece[i] == KNIGHT || piece[i] == BISHOP || 
+				           piece[i] == ROOK || piece[i] == QUEEN) {
+					gen_push(i, n, 64);    /* These pieces gate */
 				}
 				if (!slide[piece[i]])
 					break;
 			}
 			else {
 				if (color[n] == xside) {
-					/* For Commoner captures, also generate both versions */
+					/* For captures, same gating rules apply */
 					if (piece[i] == COMMONER) {
-						gen_push(i, n, 1);     /* non-gating capture */
-						gen_push(i, n, 65);    /* gating capture (1 + 64) */
-					} else {
-						gen_push(i, n, 1);
+						gen_push(i, n, 1);     /* Commoners don't gate on capture */
+					} else if (piece[i] == KNIGHT || piece[i] == BISHOP || 
+					           piece[i] == ROOK || piece[i] == QUEEN) {
+						gen_push(i, n, 65);    /* These pieces gate on capture (1 + 64) */
 					}
 				}
 				break;
@@ -292,21 +287,22 @@ void gen_caps()
 	for (i = 0; i < 64; ++i)
 		if (color[i] == side) {
 			if (piece[i] == PAWN) {
+				/* Pawns gate (leave Knights) in battlekings */
 				if (side == LIGHT) {
 					if (COL(i) != 0 && color[i - 9] == DARK)
-						gen_push(i, i - 9, 17);
+						gen_push(i, i - 9, 81);  /* capture with gating */
 					if (COL(i) != 7 && color[i - 7] == DARK)
-						gen_push(i, i - 7, 17);
+						gen_push(i, i - 7, 81);  /* capture with gating */
 					if (i <= 15 && color[i - 8] == EMPTY)
-						gen_push(i, i - 8, 16);
+						gen_push(i, i - 8, 80);  /* promotion move with gating */
 				}
 				if (side == DARK) {
 					if (COL(i) != 0 && color[i + 7] == LIGHT)
-						gen_push(i, i + 7, 17);
+						gen_push(i, i + 7, 81);  /* capture with gating */
 					if (COL(i) != 7 && color[i + 9] == LIGHT)
-						gen_push(i, i + 9, 17);
+						gen_push(i, i + 9, 81);  /* capture with gating */
 					if (i >= 48 && color[i + 8] == EMPTY)
-						gen_push(i, i + 8, 16);
+						gen_push(i, i + 8, 80);  /* promotion move with gating */
 				}
 			}
 			else
@@ -317,12 +313,14 @@ void gen_caps()
 							break;
 						if (color[n] != EMPTY) {
 							if (color[n] == xside) {
-								/* For Commoner captures, generate both versions */
+								/* In battlekings: 
+								   - Commoners don't gate
+								   - Knights, Bishops, Rooks, Queens gate */
 								if (piece[i] == COMMONER) {
-									gen_push(i, n, 1);    /* non-gating capture */
-									gen_push(i, n, 65);   /* gating capture */
-								} else {
-									gen_push(i, n, 1);
+									gen_push(i, n, 1);    /* Commoners don't gate */
+								} else if (piece[i] == KNIGHT || piece[i] == BISHOP ||
+								           piece[i] == ROOK || piece[i] == QUEEN) {
+									gen_push(i, n, 65);   /* gating capture (1 + 64) */
 								}
 							}
 							break;
@@ -331,20 +329,7 @@ void gen_caps()
 							break;
 					}
 		}
-	if (ep != -1) {
-		if (side == LIGHT) {
-			if (COL(ep) != 0 && color[ep + 7] == LIGHT && piece[ep + 7] == PAWN)
-				gen_push(ep + 7, ep, 21);
-			if (COL(ep) != 7 && color[ep + 9] == LIGHT && piece[ep + 9] == PAWN)
-				gen_push(ep + 9, ep, 21);
-		}
-		else {
-			if (COL(ep) != 0 && color[ep - 9] == DARK && piece[ep - 9] == PAWN)
-				gen_push(ep - 9, ep, 21);
-			if (COL(ep) != 7 && color[ep - 7] == DARK && piece[ep - 7] == PAWN)
-				gen_push(ep - 7, ep, 21);
-		}
-	}
+	/* No en passant in battlekings variant */
 }
 
 
@@ -473,14 +458,8 @@ BOOL makemove(move_bytes m)
 	/* update the castle, en passant, and
 	   fifty-move-draw variables */
 	castle &= castle_mask[(int)m.from] & castle_mask[(int)m.to];
-	if (m.bits & 8) {
-		if (side == LIGHT)
-			ep = m.to + 8;
-		else
-			ep = m.to - 8;
-	}
-	else
-		ep = -1;
+	/* No en passant in battlekings variant */
+	ep = -1;
 	if (m.bits & 17)
 		fifty = 0;
 	else
@@ -493,10 +472,36 @@ BOOL makemove(move_bytes m)
 	else
 		piece[(int)m.to] = piece[(int)m.from];
 	
-	/* Gating: if a Commoner moves with the gate bit set, leave another Commoner behind */
-	if (piece[(int)m.to] == COMMONER && (m.bits & 64)) {
+	/* Gating in battlekings variant:
+	   - Pawn → leaves Knight behind
+	   - Knight → leaves Bishop behind
+	   - Bishop → leaves Rook behind
+	   - Rook → leaves Queen behind
+	   - Queen → leaves Commoner behind
+	   - Commoner → no gating (normal move)
+	   
+	   Note: We need to check the piece type BEFORE it moved/promoted
+	*/
+	if (m.bits & 64) {
+		/* Gating is enabled for this move */
+		int original_piece = (m.bits & 32) ? PAWN : piece[(int)m.to];
 		color[(int)m.from] = side;
-		piece[(int)m.from] = COMMONER;
+		
+		if (original_piece == PAWN) {
+			piece[(int)m.from] = KNIGHT;
+		} else if (original_piece == KNIGHT) {
+			piece[(int)m.from] = BISHOP;
+		} else if (original_piece == BISHOP) {
+			piece[(int)m.from] = ROOK;
+		} else if (original_piece == ROOK) {
+			piece[(int)m.from] = QUEEN;
+		} else if (original_piece == QUEEN) {
+			piece[(int)m.from] = COMMONER;
+		} else {
+			/* Commoner should not gate in battlekings */
+			color[(int)m.from] = EMPTY;
+			piece[(int)m.from] = EMPTY;
+		}
 	}
 	else {
 		color[(int)m.from] = EMPTY;
