@@ -24,7 +24,7 @@ void init_board()
 	}
 	side = LIGHT;
 	xside = DARK;
-	castle = 15;
+	castle = 0;  /* no castling in gravity chess */
 	ep = -1;
 	fifty = 0;
 	ply = 0;
@@ -119,17 +119,29 @@ BOOL attack(int sq, int s)
 	{
 		if (color[i] == s) {
 			if (piece[i] == PAWN) {
+				int col = COL(i);
+				int row = ROW(i);
 				if (s == LIGHT) {
-					if (COL(i) != 0 && i - 9 == sq)
-						return TRUE;
-					if (COL(i) != 7 && i - 7 == sq)
-						return TRUE;
+					/* White pawns attack diagonally to the west (left) */
+					if (col > 0) {
+						/* Up-left diagonal: -1 column, -1 rank = i - 1 - 8 = i - 9 */
+						if (row > 0 && i - 9 == sq)
+							return TRUE;
+						/* Down-left diagonal: -1 column, +1 rank = i - 1 + 8 = i + 7 */
+						if (row < 7 && i + 7 == sq)
+							return TRUE;
+					}
 				}
 				else {
-					if (COL(i) != 0 && i + 7 == sq)
-						return TRUE;
-					if (COL(i) != 7 && i + 9 == sq)
-						return TRUE;
+					/* Black pawns attack diagonally to the east (right) */
+					if (col < 7) {
+						/* Up-right diagonal: +1 column, -1 rank = i + 1 - 8 = i - 7 */
+						if (row > 0 && i - 7 == sq)
+							return TRUE;
+						/* Down-right diagonal: +1 column, +1 rank = i + 1 + 8 = i + 9 */
+						if (row < 7 && i + 9 == sq)
+							return TRUE;
+					}
 				}
 			}
 			else
@@ -191,26 +203,49 @@ void genEnPassant()
 
 void genPawn(int i)
 {
+	int col = COL(i);
+	int row = ROW(i);
+	
 	if (side == LIGHT) {
-		if (COL(i) != 0 && color[i - 9] == DARK)
-			gen_push(i, i - 9, 17);
-		if (COL(i) != 7 && color[i - 7] == DARK)
-			gen_push(i, i - 7, 17);
-		if (color[i - 8] == EMPTY) {
-			gen_push(i, i - 8, 16);
-			if (i >= 48 && color[i - 16] == EMPTY)
-				gen_push(i, i - 16, 24);
+		/* White pawns move west (left, -1 column) */
+		if (col > 0) {  /* can move left */
+			int target = i - 1;  /* one square to the left */
+			
+			/* Diagonal captures - to the left and up/down one rank */
+			/* Note: moving to adjacent column and up one rank means -1 col, -8 square = i - 1 - 8 = i - 9 */
+			/* But since target = i - 1, we check target +/- 8 */
+			if (row > 0 && color[i - 1 - 8] == DARK)  /* left and up */
+				gen_push(i, i - 1 - 8, 17);
+			if (row < 7 && color[i - 1 + 8] == DARK)  /* left and down */
+				gen_push(i, i - 1 + 8, 17);
+			
+			/* Forward move (just left) */
+			if (color[target] == EMPTY) {
+				gen_push(i, target, 16);
+				/* Double move from starting column (g = column 6) */
+				if (col == 6 && color[i - 2] == EMPTY)
+					gen_push(i, i - 2, 24);
+			}
 		}
 	}
 	else {
-		if (COL(i) != 0 && color[i + 7] == LIGHT)
-			gen_push(i, i + 7, 17);
-		if (COL(i) != 7 && color[i + 9] == LIGHT)
-			gen_push(i, i + 9, 17);
-		if (color[i + 8] == EMPTY) {
-			gen_push(i, i + 8, 16);
-			if (i <= 15 && color[i + 16] == EMPTY)
-				gen_push(i, i + 16, 24);
+		/* Black pawns move east (right, +1 column) */
+		if (col < 7) {  /* can move right */
+			int target = i + 1;  /* one square to the right */
+			
+			/* Diagonal captures - to the right and up/down one rank */
+			if (row > 0 && color[i + 1 - 8] == LIGHT)  /* right and up */
+				gen_push(i, i + 1 - 8, 17);
+			if (row < 7 && color[i + 1 + 8] == LIGHT)  /* right and down */
+				gen_push(i, i + 1 + 8, 17);
+			
+			/* Forward move (just right) */
+			if (color[target] == EMPTY) {
+				gen_push(i, target, 16);
+				/* Double move from starting column (b = column 1) */
+				if (col == 1 && color[i + 2] == EMPTY)
+					gen_push(i, i + 2, 24);
+			}
 		}
 	}
 }
@@ -276,11 +311,7 @@ void gen()
 	first_move[ply + 1] = first_move[ply];
 	genMoves();
 
-	/* generate castle moves */
-	genCastles();
-	/* generate en passant moves */
-	genEnPassant();
-
+	/* No castling or en passant in gravity chess */
 }
 
 
@@ -296,21 +327,33 @@ void gen_caps()
 	for (i = 0; i < 64; ++i)
 		if (color[i] == side) {
 			if (piece[i] == PAWN) {
+				int col = COL(i);
+				int row = ROW(i);
 				if (side == LIGHT) {
-					if (COL(i) != 0 && color[i - 9] == DARK)
-						gen_push(i, i - 9, 17);
-					if (COL(i) != 7 && color[i - 7] == DARK)
-						gen_push(i, i - 7, 17);
-					if (i <= 15 && color[i - 8] == EMPTY)
-						gen_push(i, i - 8, 16);
+					/* White pawns capture diagonally to the west */
+					if (col > 0) {
+						/* Up-left and down-left captures */
+						if (row > 0 && color[i - 9] == DARK)
+							gen_push(i, i - 9, 17);
+						if (row < 7 && color[i + 7] == DARK)
+							gen_push(i, i + 7, 17);
+						/* Include promotions (one square before column a) */
+						if (col == 1 && color[i - 1] == EMPTY)
+							gen_push(i, i - 1, 16);
+					}
 				}
 				if (side == DARK) {
-					if (COL(i) != 0 && color[i + 7] == LIGHT)
-						gen_push(i, i + 7, 17);
-					if (COL(i) != 7 && color[i + 9] == LIGHT)
-						gen_push(i, i + 9, 17);
-					if (i >= 48 && color[i + 8] == EMPTY)
-						gen_push(i, i + 8, 16);
+					/* Black pawns capture diagonally to the east */
+					if (col < 7) {
+						/* Up-right and down-right captures */
+						if (row > 0 && color[i - 7] == LIGHT)
+							gen_push(i, i - 7, 17);
+						if (row < 7 && color[i + 9] == LIGHT)
+							gen_push(i, i + 9, 17);
+						/* Include promotions (one square before column h) */
+						if (col == 6 && color[i + 1] == EMPTY)
+							gen_push(i, i + 1, 16);
+					}
 				}
 			}
 			else
@@ -328,20 +371,7 @@ void gen_caps()
 							break;
 					}
 		}
-	if (ep != -1) {
-		if (side == LIGHT) {
-			if (COL(ep) != 0 && color[ep + 7] == LIGHT && piece[ep + 7] == PAWN)
-				gen_push(ep + 7, ep, 21);
-			if (COL(ep) != 7 && color[ep + 9] == LIGHT && piece[ep + 9] == PAWN)
-				gen_push(ep + 9, ep, 21);
-		}
-		else {
-			if (COL(ep) != 0 && color[ep - 9] == DARK && piece[ep - 9] == PAWN)
-				gen_push(ep - 9, ep, 21);
-			if (COL(ep) != 7 && color[ep - 7] == DARK && piece[ep - 7] == PAWN)
-				gen_push(ep - 7, ep, 21);
-		}
-	}
+	/* No en passant in gravity chess */
 }
 
 
@@ -358,15 +388,18 @@ void gen_push(int from, int to, int bits)
 {
 	gen_t *g;
 
+	/* Check for pawn promotion in gravity chess */
 	if (bits & 16) {
 		if (side == LIGHT) {
-			if (to <= H8) {
+			/* White promotes on column a (COL = 0) */
+			if (COL(to) == 0) {
 				gen_promote(from, to, bits);
 				return;
 			}
 		}
 		else {
-			if (to >= A1) {
+			/* Black promotes on column h (COL = 7) */
+			if (COL(to) == 7) {
 				gen_promote(from, to, bits);
 				return;
 			}
@@ -464,20 +497,18 @@ BOOL makemove(move_bytes m)
 	hist_dat[hply].ep = ep;
 	hist_dat[hply].fifty = fifty;
 	hist_dat[hply].hash = hash;
+	
+	/* Check if this is a capture (before we overwrite the destination) */
+	BOOL is_capture = (hist_dat[hply].capture != EMPTY);
+	
 	++ply;
 	++hply;
 
 	/* update the castle, en passant, and
 	   fifty-move-draw variables */
 	castle &= castle_mask[(int)m.from] & castle_mask[(int)m.to];
-	if (m.bits & 8) {
-		if (side == LIGHT)
-			ep = m.to + 8;
-		else
-			ep = m.to - 8;
-	}
-	else
-		ep = -1;
+	/* No en passant in gravity chess */
+	ep = -1;
 	if (m.bits & 17)
 		fifty = 0;
 	else
@@ -501,6 +532,18 @@ BOOL makemove(move_bytes m)
 		else {
 			color[m.to - 8] = EMPTY;
 			piece[m.to - 8] = EMPTY;
+		}
+	}
+
+	/* Apply gravity if the piece landed on an empty square (not a capture) */
+	if (!is_capture) {
+		int gravity_sq = apply_gravity(m.to);
+		if (gravity_sq != m.to) {
+			/* Piece fell to a different square */
+			color[gravity_sq] = color[(int)m.to];
+			piece[gravity_sq] = piece[(int)m.to];
+			color[(int)m.to] = EMPTY;
+			piece[(int)m.to] = EMPTY;
 		}
 	}
 
@@ -586,4 +629,27 @@ void takeback()
 			piece[m.to - 8] = PAWN;
 		}
 	}
+}
+
+
+/* apply_gravity() makes a piece fall down due to gravity.
+   Returns the final square after falling. If a piece lands on an
+   empty square, it continues to fall until it hits another piece
+   or reaches rank 1.
+   In the coordinate system: rank 8 is row 0 (squares 0-7), rank 1 is row 7 (squares 56-63)
+   Gravity pulls pieces toward rank 1, which means increasing row number. */
+
+int apply_gravity(int sq)
+{
+	int current = sq;
+	
+	/* Keep falling toward rank 1 (row 7) */
+	while (ROW(current) < 7) {
+		int below = current + 8;  /* next rank down (toward rank 1) */
+		if (color[below] != EMPTY)
+			break;  /* hit another piece */
+		current = below;
+	}
+	
+	return current;
 }
