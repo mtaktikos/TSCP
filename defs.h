@@ -91,4 +91,5 @@ typedef struct {
 	int ep;
 	int fifty;
 	int hash;
+	int gravity_to;  /* if gravity applied, the final square; otherwise -1 */
 } hist_t;

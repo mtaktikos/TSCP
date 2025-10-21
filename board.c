@@ -497,6 +497,7 @@ BOOL makemove(move_bytes m)
 	hist_dat[hply].ep = ep;
 	hist_dat[hply].fifty = fifty;
 	hist_dat[hply].hash = hash;
+	hist_dat[hply].gravity_to = -1;  /* will be updated if gravity applies */
 	
 	/* Check if this is a capture (before we overwrite the destination) */
 	BOOL is_capture = (hist_dat[hply].capture != EMPTY);
@@ -540,6 +541,7 @@ BOOL makemove(move_bytes m)
 		int gravity_sq = apply_gravity(m.to);
 		if (gravity_sq != m.to) {
 			/* Piece fell to a different square */
+			hist_dat[hply - 1].gravity_to = gravity_sq;
 			color[gravity_sq] = color[(int)m.to];
 			piece[gravity_sq] = piece[(int)m.to];
 			color[(int)m.to] = EMPTY;
@@ -566,6 +568,7 @@ BOOL makemove(move_bytes m)
 void takeback()
 {
 	move_bytes m;
+	int actual_to;
 
 	side ^= 1;
 	xside ^= 1;
@@ -576,11 +579,21 @@ void takeback()
 	ep = hist_dat[hply].ep;
 	fifty = hist_dat[hply].fifty;
 	hash = hist_dat[hply].hash;
+	
+	/* If gravity was applied, the piece is actually at gravity_to, not m.to */
+	actual_to = (hist_dat[hply].gravity_to != -1) ? hist_dat[hply].gravity_to : m.to;
+	
 	color[(int)m.from] = side;
 	if (m.bits & 32)
 		piece[(int)m.from] = PAWN;
 	else
-		piece[(int)m.from] = piece[(int)m.to];
+		piece[(int)m.from] = piece[actual_to];
+	
+	/* Clear the actual destination square */
+	color[actual_to] = EMPTY;
+	piece[actual_to] = EMPTY;
+	
+	/* Restore the captured piece at the original destination (not gravity destination) */
 	if (hist_dat[hply].capture == EMPTY) {
 		color[(int)m.to] = EMPTY;
 		piece[(int)m.to] = EMPTY;
