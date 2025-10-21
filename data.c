@@ -154,26 +154,32 @@ char piece_char[6] = {
 };
 
 
-/* the initial board state */
+/* the initial board state - rotated 90 degrees for gravity chess
+   FEN: rp4PR/np4PN/bp4PB/kp4PK/qp4PQ/bp4PB/np4PN/rp4PR w - - 0 1
+   Column a (left): black pieces (r,n,b,k,q,b,n,r from 8 to 1)
+   Column b: black pawns
+   Columns c-f: empty
+   Column g: white pawns
+   Column h (right): white pieces (R,N,B,K,Q,B,N,R from 8 to 1) */
 
 int init_color[64] = {
-	1, 1, 1, 1, 1, 1, 1, 1,
-	1, 1, 1, 1, 1, 1, 1, 1,
-	6, 6, 6, 6, 6, 6, 6, 6,
-	6, 6, 6, 6, 6, 6, 6, 6,
-	6, 6, 6, 6, 6, 6, 6, 6,
-	6, 6, 6, 6, 6, 6, 6, 6,
-	0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0
+	1, 1, 6, 6, 6, 6, 0, 0,  /* rank 8: r p . . . . P R */
+	1, 1, 6, 6, 6, 6, 0, 0,  /* rank 7: n p . . . . P N */
+	1, 1, 6, 6, 6, 6, 0, 0,  /* rank 6: b p . . . . P B */
+	1, 1, 6, 6, 6, 6, 0, 0,  /* rank 5: k p . . . . P K */
+	1, 1, 6, 6, 6, 6, 0, 0,  /* rank 4: q p . . . . P Q */
+	1, 1, 6, 6, 6, 6, 0, 0,  /* rank 3: b p . . . . P B */
+	1, 1, 6, 6, 6, 6, 0, 0,  /* rank 2: n p . . . . P N */
+	1, 1, 6, 6, 6, 6, 0, 0   /* rank 1: r p . . . . P R */
 };
 
 int init_piece[64] = {
-	3, 1, 2, 4, 5, 2, 1, 3,
-	0, 0, 0, 0, 0, 0, 0, 0,
-	6, 6, 6, 6, 6, 6, 6, 6,
-	6, 6, 6, 6, 6, 6, 6, 6,
-	6, 6, 6, 6, 6, 6, 6, 6,
-	6, 6, 6, 6, 6, 6, 6, 6,
-	0, 0, 0, 0, 0, 0, 0, 0,
-	3, 1, 2, 4, 5, 2, 1, 3
+	3, 0, 6, 6, 6, 6, 0, 3,  /* rank 8: r p . . . . P R */
+	1, 0, 6, 6, 6, 6, 0, 1,  /* rank 7: n p . . . . P N */
+	2, 0, 6, 6, 6, 6, 0, 2,  /* rank 6: b p . . . . P B */
+	5, 0, 6, 6, 6, 6, 0, 5,  /* rank 5: k p . . . . P K */
+	4, 0, 6, 6, 6, 6, 0, 4,  /* rank 4: q p . . . . P Q */
+	2, 0, 6, 6, 6, 6, 0, 2,  /* rank 3: b p . . . . P B */
+	1, 0, 6, 6, 6, 6, 0, 1,  /* rank 2: n p . . . . P N */
+	3, 0, 6, 6, 6, 6, 0, 3   /* rank 1: r p . . . . P R */
 };
