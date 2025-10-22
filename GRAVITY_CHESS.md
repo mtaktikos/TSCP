@@ -45,6 +45,25 @@ When a piece captures:
 - The capturing piece does NOT fall
 - It remains at the capture square
 
+### Cascade Effect
+When a piece moves away from a square, all pieces above it in the same column fall down:
+- Each piece falls down by one rank to fill the gap
+- This creates a "cascade" or "compression" effect in the column
+- The cascade continues until there are no more pieces above
+
+Example:
+```
+Initial:         After h2f3:
+h8  R            h8  .
+h7  N            h7  R
+h6  B            h6  N
+h5  K            h5  B
+h4  Q            h4  K
+h3  B            h3  Q
+h2  N ← moves    h2  B
+h1  R            h1  R
+```
+
 ## Special Rules
 - **No castling** - castling is disabled
 - **No en passant** - en passant captures are disabled
