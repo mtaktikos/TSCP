@@ -22,6 +22,7 @@ void gen_promote(int from, int to, int bits);
 BOOL makemove(move_bytes m);
 void takeback();
 int apply_gravity(int sq);
+int apply_column_gravity(int from_sq);
 
 /* book.c */
 void open_book();
