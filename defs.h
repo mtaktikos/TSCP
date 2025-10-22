@@ -94,4 +94,7 @@ typedef struct {
 	int gravity_to;  /* if gravity applied, the final square; otherwise -1 */
 	int fall_from;   /* if a piece fell from above to starting square, its original position; otherwise -1 */
 	int fall_to;     /* if a piece fell from above, where it ended up after gravity; otherwise -1 */
+	int cascade_count;  /* number of pieces that fell in cascade (0 if none) */
+	int cascade_from[8];  /* original positions of pieces that fell in cascade */
+	int cascade_to[8];    /* final positions after gravity of pieces that fell in cascade */
 } hist_t;
