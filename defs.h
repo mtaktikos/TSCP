@@ -92,4 +92,5 @@ typedef struct {
 	int fifty;
 	int hash;
 	int gravity_to;  /* if gravity applied, the final square; otherwise -1 */
+	int column_gravity_count;  /* number of pieces that fell in the source column; 0 if none */
 } hist_t;

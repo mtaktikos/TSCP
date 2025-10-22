@@ -498,6 +498,7 @@ BOOL makemove(move_bytes m)
 	hist_dat[hply].fifty = fifty;
 	hist_dat[hply].hash = hash;
 	hist_dat[hply].gravity_to = -1;  /* will be updated if gravity applies */
+	hist_dat[hply].column_gravity_count = 0;  /* will be updated if column gravity applies */
 	
 	/* Check if this is a capture (before we overwrite the destination) */
 	BOOL is_capture = (hist_dat[hply].capture != EMPTY);
@@ -548,6 +549,9 @@ BOOL makemove(move_bytes m)
 			piece[(int)m.to] = EMPTY;
 		}
 	}
+	
+	/* Apply column gravity: pieces above the source square fall down */
+	hist_dat[hply - 1].column_gravity_count = apply_column_gravity(m.from);
 
 	/* switch sides and test for legality (if we can capture
 	   the other guy's king, it's an illegal position and
@@ -582,6 +586,27 @@ void takeback()
 	
 	/* If gravity was applied, the piece is actually at gravity_to, not m.to */
 	actual_to = (hist_dat[hply].gravity_to != -1) ? hist_dat[hply].gravity_to : m.to;
+	
+	/* Restore pieces that fell due to column gravity BEFORE restoring the moving piece */
+	if (hist_dat[hply].column_gravity_count > 0) {
+		int count = hist_dat[hply].column_gravity_count;
+		/* Pieces fell down in the column. The piece that was at m.from - 8 is now at m.from,
+		   the piece that was at m.from - 16 is now at m.from - 8, etc.
+		   To restore, we need to move them back up in reverse order (from top to bottom). */
+		int i;
+		for (i = count - 1; i >= 0; i--) {
+			/* Move piece from (m.from - i*8) back to (m.from - (i+1)*8) */
+			int current = m.from - (i * 8);      /* where the fallen piece currently is */
+			int above = current - 8;              /* where it should go back to */
+			
+			if (ROW(above) >= 0) {  /* make sure we don't go off the board */
+				color[above] = color[current];
+				piece[above] = piece[current];
+				color[current] = EMPTY;
+				piece[current] = EMPTY;
+			}
+		}
+	}
 	
 	color[(int)m.from] = side;
 	if (m.bits & 32)
@@ -665,4 +690,42 @@ int apply_gravity(int sq)
 	}
 	
 	return current;
+}
+
+
+/* apply_column_gravity() applies gravity to the column where a piece moved from.
+   After a piece leaves a square, pieces above it in the same column fall down.
+   Returns the number of pieces that fell. */
+
+int apply_column_gravity(int from_sq)
+{
+	int count = 0;
+	int col = COL(from_sq);
+	int current_empty = from_sq;  /* The empty square that pieces can fall into */
+	
+	/* Move up the column (toward rank 8, decreasing row number) */
+	while (ROW(current_empty) > 0) {
+		int above = current_empty - 8;  /* one rank up */
+		
+		/* If there's a piece above, make it fall down */
+		if (color[above] != EMPTY) {
+			/* Move the piece down to the empty square */
+			color[current_empty] = color[above];
+			piece[current_empty] = piece[above];
+			color[above] = EMPTY;
+			piece[above] = EMPTY;
+			
+			count++;
+			
+			/* Now the square above is empty, continue checking further up */
+			current_empty = above;
+		}
+		else {
+			/* No piece above, but continue checking higher ranks in case there are pieces
+			   further up (with gaps) - though this shouldn't happen in normal gravity chess */
+			current_empty = above;
+		}
+	}
+	
+	return count;
 }
