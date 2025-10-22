@@ -34,8 +34,6 @@ FEN: rp4PR/np4PN/bp4PB/kp4PK/qp4PQ/bp4PB/np4PN/rp4PR w - - 0 1
 - **Black pawns** promote when reaching **column h** (h1-h8)
 
 ## Gravity Mechanics
-
-### Moving Piece Gravity
 When a piece moves to an empty square (not a capture):
 1. The piece falls down toward rank 1 due to gravity
 2. The piece continues falling through empty squares
@@ -46,27 +44,6 @@ When a piece moves to an empty square (not a capture):
 When a piece captures:
 - The capturing piece does NOT fall
 - It remains at the capture square
-
-### Column Gravity
-After a piece moves from a square (column n, rank m):
-1. If there is a piece at column n, rank m+1 (the square directly above), it falls down to rank m
-2. If there is a piece at column n, rank m+2, it falls down to rank m+1
-3. This chain reaction continues upward through all pieces in the column up to rank 8
-
-Example:
-```
-Before white knight moves from g7:
-8  . . . . . . P R
-7  . . . . . . P N  <- knight moves from here
-6  . . . . . . P B
-
-After g7e8 (knight to e8, then falls):
-8  . . . . . . P .  <- rook fell from here
-7  . . . . . . P R  <- to here
-6  . . . . . . P B
-...
-1  . . . . N . . .  <- knight landed here after gravity
-```
 
 ## Special Rules
 - **No castling** - castling is disabled
