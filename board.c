@@ -498,6 +498,8 @@ BOOL makemove(move_bytes m)
 	hist_dat[hply].fifty = fifty;
 	hist_dat[hply].hash = hash;
 	hist_dat[hply].gravity_to = -1;  /* will be updated if gravity applies */
+	hist_dat[hply].fall_from = -1;   /* will be updated if piece falls from above */
+	hist_dat[hply].fall_to = -1;     /* will be updated if piece falls from above */
 	
 	/* Check if this is a capture (before we overwrite the destination) */
 	BOOL is_capture = (hist_dat[hply].capture != EMPTY);
@@ -549,6 +551,41 @@ BOOL makemove(move_bytes m)
 		}
 	}
 
+	/* Check if a piece from above should fall to the starting square */
+	/* m.from is now empty, check if rank < 8 (row > 0) and if there's a piece above */
+	int from_row = ROW(m.from);
+	if (from_row > 0) {  /* rank < 8 */
+		int above_sq = m.from - 8;  /* one rank higher (rank n+1) */
+		if (color[above_sq] != EMPTY) {
+			/* There's a piece above, make it fall to m.from */
+			hist_dat[hply - 1].fall_from = above_sq;
+			
+			/* DEBUG */
+			/* printf("DEBUG: Piece at sq %d falling to sq %d\n", above_sq, m.from); */
+			
+			/* Move the piece to m.from first */
+			color[(int)m.from] = color[above_sq];
+			piece[(int)m.from] = piece[above_sq];
+			color[above_sq] = EMPTY;
+			piece[above_sq] = EMPTY;
+			
+			/* Then apply gravity to make it fall further if possible */
+			int fall_sq = apply_gravity(m.from);
+			hist_dat[hply - 1].fall_to = fall_sq;
+			
+			/* DEBUG */
+			/* printf("DEBUG: After gravity, piece at sq %d\n", fall_sq); */
+			
+			if (fall_sq != m.from) {
+				/* Piece fell further */
+				color[fall_sq] = color[(int)m.from];
+				piece[fall_sq] = piece[(int)m.from];
+				color[(int)m.from] = EMPTY;
+				piece[(int)m.from] = EMPTY;
+			}
+		}
+	}
+
 	/* switch sides and test for legality (if we can capture
 	   the other guy's king, it's an illegal position and
 	   we need to take the move back) */
@@ -579,6 +616,18 @@ void takeback()
 	ep = hist_dat[hply].ep;
 	fifty = hist_dat[hply].fifty;
 	hash = hist_dat[hply].hash;
+	
+	/* First, undo any piece that fell from above */
+	if (hist_dat[hply].fall_from != -1) {
+		int fall_from = hist_dat[hply].fall_from;
+		int fall_to = hist_dat[hply].fall_to;
+		
+		/* The piece is currently at fall_to, restore it to fall_from */
+		color[fall_from] = color[fall_to];
+		piece[fall_from] = piece[fall_to];
+		color[fall_to] = EMPTY;
+		piece[fall_to] = EMPTY;
+	}
 	
 	/* If gravity was applied, the piece is actually at gravity_to, not m.to */
 	actual_to = (hist_dat[hply].gravity_to != -1) ? hist_dat[hply].gravity_to : m.to;
