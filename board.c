@@ -7,6 +7,7 @@
 
 
 #include <stdlib.h>
+#include <stdio.h>
 #include "defs.h"
 #include "data.h"
 #include "protos.h"
@@ -551,38 +552,45 @@ BOOL makemove(move_bytes m)
 		}
 	}
 
-	/* Check if a piece from above should fall to the starting square */
-	/* m.from is now empty, check if rank < 8 (row > 0) and if there's a piece above */
+	/* Check if pieces from above should cascade down to fill the starting square */
+	/* m.from is now empty, check if rank < 8 (row > 0) and if there are pieces above */
 	int from_row = ROW(m.from);
 	if (from_row > 0) {  /* rank < 8 */
-		int above_sq = m.from - 8;  /* one rank higher (rank n+1) */
-		if (color[above_sq] != EMPTY) {
-			/* There's a piece above, make it fall to m.from */
-			hist_dat[hply - 1].fall_from = above_sq;
-			
-			/* DEBUG */
-			/* printf("DEBUG: Piece at sq %d falling to sq %d\n", above_sq, m.from); */
-			
-			/* Move the piece to m.from first */
-			color[(int)m.from] = color[above_sq];
-			piece[(int)m.from] = piece[above_sq];
-			color[above_sq] = EMPTY;
-			piece[above_sq] = EMPTY;
-			
-			/* Then apply gravity to make it fall further if possible */
-			int fall_sq = apply_gravity(m.from);
-			hist_dat[hply - 1].fall_to = fall_sq;
-			
-			/* DEBUG */
-			/* printf("DEBUG: After gravity, piece at sq %d\n", fall_sq); */
-			
-			if (fall_sq != m.from) {
-				/* Piece fell further */
-				color[fall_sq] = color[(int)m.from];
-				piece[fall_sq] = piece[(int)m.from];
-				color[(int)m.from] = EMPTY;
-				piece[(int)m.from] = EMPTY;
+		/* Find the topmost piece in the column above m.from */
+		int topmost_sq = -1;
+		int check_sq = m.from - 8;  /* start one rank above */
+		while (ROW(check_sq) >= 0 && COL(check_sq) == COL(m.from)) {
+			if (color[check_sq] != EMPTY) {
+				topmost_sq = check_sq;
 			}
+			if (ROW(check_sq) == 0) break;  /* reached rank 8 */
+			check_sq -= 8;  /* move up one rank */
+		}
+		
+		if (topmost_sq != -1) {
+			/* Store the topmost piece position for undo */
+			hist_dat[hply - 1].fall_from = topmost_sq;
+			
+			/* Cascade all pieces down by one square (shift operation) */
+			/* Start from m.from and work our way up to topmost_sq */
+			int target_sq = m.from;  /* where to move the next piece */
+			int source_sq = m.from - 8;  /* where to get the next piece from */
+			
+			while (source_sq >= topmost_sq && ROW(source_sq) >= 0 && COL(source_sq) == COL(m.from)) {
+				if (color[source_sq] != EMPTY) {
+					/* Move this piece down to target_sq */
+					color[target_sq] = color[source_sq];
+					piece[target_sq] = piece[source_sq];
+					color[source_sq] = EMPTY;
+					piece[source_sq] = EMPTY;
+					
+					target_sq = source_sq;  /* next piece will fill this spot */
+				}
+				source_sq -= 8;  /* move up to check next piece */
+			}
+			
+			/* Store where we stopped (for verification/debugging) */
+			hist_dat[hply - 1].fall_to = target_sq;
 		}
 	}
 
@@ -617,16 +625,28 @@ void takeback()
 	fifty = hist_dat[hply].fifty;
 	hash = hist_dat[hply].hash;
 	
-	/* First, undo any piece that fell from above */
+	/* First, undo any pieces that fell from above due to cascade */
 	if (hist_dat[hply].fall_from != -1) {
 		int fall_from = hist_dat[hply].fall_from;
-		int fall_to = hist_dat[hply].fall_to;
+		int col = COL(m.from);
 		
-		/* The piece is currently at fall_to, restore it to fall_from */
-		color[fall_from] = color[fall_to];
-		piece[fall_from] = piece[fall_to];
-		color[fall_to] = EMPTY;
-		piece[fall_to] = EMPTY;
+		/* Reverse the cascade by moving pieces back up by one square */
+		/* fall_from is ABOVE m.from (lower square number, higher rank) */
+		/* We need to move pieces up: from fall_from to m.from-8 */
+		/* Iterate from fall_from UP to m.from-8 (increasing square numbers) */
+		for (int sq = fall_from; sq < m.from; sq += 8) {
+			if (ROW(sq) > 7 || COL(sq) != col) break;
+			
+			int below_sq = sq + 8;  /* the square below where piece currently is */
+			
+			/* Move the piece from below_sq up to sq */
+			if (below_sq <= m.from && color[below_sq] != EMPTY) {
+				color[sq] = color[below_sq];
+				piece[sq] = piece[below_sq];
+				color[below_sq] = EMPTY;
+				piece[below_sq] = EMPTY;
+			}
+		}
 	}
 	
 	/* If gravity was applied, the piece is actually at gravity_to, not m.to */
