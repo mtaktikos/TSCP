@@ -28,13 +28,13 @@
 
 #define EMPTY			8
 
-/* useful squares */
+/* useful squares - King on f-file, castles g-file (kingside) and c-file (queenside) */
 #define A1				70
 #define B1				71
 #define C1				72
 #define D1				73
 #define E1				74
-#define F1				75
+#define F1				75  /* White King */
 #define G1				76
 #define H1				77
 #define I1				78
@@ -44,7 +44,7 @@
 #define C8				2
 #define D8				3
 #define E8				4
-#define F8				5
+#define F8				5   /* Black King */
 #define G8				6
 #define H8				7
 #define I8				8

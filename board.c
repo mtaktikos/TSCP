@@ -185,15 +185,15 @@ void genCastles()
 {
 	if (side == LIGHT) {
 		if (castle & 1)
-			gen_push(E1, G1, 2);  /* kingside: E1 to G1 */
+			gen_push(F1, H1, 2);  /* kingside: F1 to H1 */
 		if (castle & 2)
-			gen_push(E1, C1, 2);  /* queenside: E1 to C1 */
+			gen_push(F1, D1, 2);  /* queenside: F1 to D1 */
 	}
 	else {
 		if (castle & 4)
-			gen_push(E8, G8, 2);  /* kingside: E8 to G8 */
+			gen_push(F8, H8, 2);  /* kingside: F8 to H8 */
 		if (castle & 8)
-			gen_push(E8, C8, 2);  /* queenside: E8 to C8 */
+			gen_push(F8, D8, 2);  /* queenside: F8 to D8 */
 	}
 }
 
@@ -479,33 +479,33 @@ BOOL makemove(move_bytes m)
 		if (in_check(side))
 			return FALSE;
 		switch (m.to) {
-		case 76:  /* G1 - white kingside */
-			if (color[F1] != EMPTY || color[G1] != EMPTY ||
-				attack(F1, xside) || attack(G1, xside))
+		case 77:  /* H1 - white kingside: King f1->h1, Rook j1->g1 */
+			if (color[G1] != EMPTY || color[H1] != EMPTY ||
+				attack(G1, xside) || attack(H1, xside))
 				return FALSE;
 			from = J1;
-			to = F1;
+			to = G1;
 			break;
-		case 72:  /* C1 - white queenside */
-			if (color[B1] != EMPTY || color[C1] != EMPTY || color[D1] != EMPTY ||
-				attack(C1, xside) || attack(D1, xside))
+		case 73:  /* D1 - white queenside: King f1->d1, Rook a1->e1 */
+			if (color[B1] != EMPTY || color[C1] != EMPTY || color[D1] != EMPTY || color[E1] != EMPTY ||
+				attack(D1, xside) || attack(E1, xside))
 				return FALSE;
 			from = A1;
-			to = D1;
+			to = E1;
 			break;
-		case 6:  /* G8 - black kingside */
-			if (color[F8] != EMPTY || color[G8] != EMPTY ||
-				attack(F8, xside) || attack(G8, xside))
+		case 7:  /* H8 - black kingside: King f8->h8, Rook j8->g8 */
+			if (color[G8] != EMPTY || color[H8] != EMPTY ||
+				attack(G8, xside) || attack(H8, xside))
 				return FALSE;
 			from = J8;
-			to = F8;
+			to = G8;
 			break;
-		case 2:  /* C8 - black queenside */
-			if (color[B8] != EMPTY || color[C8] != EMPTY || color[D8] != EMPTY ||
-				attack(C8, xside) || attack(D8, xside))
+		case 3:  /* D8 - black queenside: King f8->d8, Rook a8->e8 */
+			if (color[B8] != EMPTY || color[C8] != EMPTY || color[D8] != EMPTY || color[E8] != EMPTY ||
+				attack(D8, xside) || attack(E8, xside))
 				return FALSE;
 			from = A8;
-			to = D8;
+			to = E8;
 			break;
 		default:  /* shouldn't get here */
 			from = -1;
@@ -611,20 +611,20 @@ void takeback()
 		int from, to;
 
 		switch (m.to) {
-		case 76:  /* G1 */
-			from = F1;
+		case 77:  /* H1 - white kingside */
+			from = G1;
 			to = J1;
 			break;
-		case 72:  /* C1 */
-			from = D1;
+		case 73:  /* D1 - white queenside */
+			from = E1;
 			to = A1;
 			break;
-		case 6:  /* G8 */
-			from = F8;
+		case 7:  /* H8 - black kingside */
+			from = G8;
 			to = J8;
 			break;
-		case 2:  /* C8 */
-			from = D8;
+		case 3:  /* D8 - black queenside */
+			from = E8;
 			to = A8;
 			break;
 		default:  /* shouldn't get here */
