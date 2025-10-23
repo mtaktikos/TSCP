@@ -18,7 +18,7 @@ void init_board()
 {
 	int i;
 
-	for (i = 0; i < 64; ++i) {
+	for (i = 0; i < 80; ++i) {
 		color[i] = init_color[i];
 		piece[i] = init_piece[i];
 	}
@@ -42,11 +42,11 @@ void init_hash()
 
 	srand(0);
 	for (i = 0; i < 2; ++i)
-		for (j = 0; j < 6; ++j)
-			for (k = 0; k < 64; ++k)
+		for (j = 0; j < 8; ++j)
+			for (k = 0; k < 80; ++k)
 				hash_piece[i][j][k] = hash_rand();
 	hash_side = hash_rand();
-	for (i = 0; i < 64; ++i)
+	for (i = 0; i < 80; ++i)
 		hash_ep[i] = hash_rand();
 }
 
@@ -83,7 +83,7 @@ void set_hash()
 	int i;
 
 	hash = 0;
-	for (i = 0; i < 64; ++i)
+	for (i = 0; i < 80; ++i)
 		if (color[i] != EMPTY)
 			hash ^= hash_piece[color[i]][piece[i]][i];
 	if (side == DARK)
@@ -101,7 +101,7 @@ BOOL in_check(int s)
 {
 	int i;
 
-	for (i = 0; i < 64; ++i)
+	for (i = 0; i < 80; ++i)
 		if (piece[i] == KING && color[i] == s)
 			return attack(i, s ^ 1);
 	return TRUE;  /* shouldn't get here */
@@ -115,20 +115,46 @@ BOOL attack(int sq, int s)
 {
 	int i, j, n;
 
-	for (i = 0; i < 64; ++i)
+	for (i = 0; i < 80; ++i)
 	{
 		if (color[i] == s) {
 			if (piece[i] == PAWN) {
 				if (s == LIGHT) {
-					if (COL(i) != 0 && i - 9 == sq)
+					if (COL(i) != 0 && i - 11 == sq)
 						return TRUE;
-					if (COL(i) != 7 && i - 7 == sq)
+					if (COL(i) != 9 && i - 9 == sq)
 						return TRUE;
 				}
 				else {
-					if (COL(i) != 0 && i + 7 == sq)
+					if (COL(i) != 0 && i + 9 == sq)
 						return TRUE;
-					if (COL(i) != 7 && i + 9 == sq)
+					if (COL(i) != 9 && i + 11 == sq)
+						return TRUE;
+				}
+			}
+			else if (piece[i] == AMAZON)
+			{
+				/* Amazon attacks like Queen + Knight */
+				/* First check queen moves */
+				for (j = 0; j < offsets[piece[i]]; ++j)
+				{
+					for (n = i;;) {
+						n = mailbox[mailbox64[n] + offset[piece[i]][j]];
+						if (n == -1)
+							break;
+						if (n == sq)
+							return TRUE;
+						if (color[n] != EMPTY)
+							break;
+						if (!slide[piece[i]])
+							break;
+					}
+				}
+				/* Then check knight moves */
+				int knight_offsets[8] = { -25, -23, -14, -10, 10, 14, 23, 25 };
+				for (j = 0; j < 8; ++j) {
+					n = mailbox[mailbox64[i] + knight_offsets[j]];
+					if (n != -1 && n == sq)
 						return TRUE;
 				}
 			}
@@ -159,15 +185,15 @@ void genCastles()
 {
 	if (side == LIGHT) {
 		if (castle & 1)
-			gen_push(E1, G1, 2);
+			gen_push(F1, H1, 2);  /* kingside: F1 to H1 */
 		if (castle & 2)
-			gen_push(E1, C1, 2);
+			gen_push(F1, D1, 2);  /* queenside: F1 to D1 */
 	}
 	else {
 		if (castle & 4)
-			gen_push(E8, G8, 2);
+			gen_push(F8, H8, 2);  /* kingside: F8 to H8 */
 		if (castle & 8)
-			gen_push(E8, C8, 2);
+			gen_push(F8, D8, 2);  /* queenside: F8 to D8 */
 	}
 }
 
@@ -175,16 +201,16 @@ void genEnPassant()
 {
 	if (ep != -1) {
 		if (side == LIGHT) {
-			if (COL(ep) != 0 && color[ep + 7] == LIGHT && piece[ep + 7] == PAWN)
-				gen_push(ep + 7, ep, 21);
-			if (COL(ep) != 7 && color[ep + 9] == LIGHT && piece[ep + 9] == PAWN)
+			if (COL(ep) != 0 && color[ep + 9] == LIGHT && piece[ep + 9] == PAWN)
 				gen_push(ep + 9, ep, 21);
+			if (COL(ep) != 9 && color[ep + 11] == LIGHT && piece[ep + 11] == PAWN)
+				gen_push(ep + 11, ep, 21);
 		}
 		else {
-			if (COL(ep) != 0 && color[ep - 9] == DARK && piece[ep - 9] == PAWN)
+			if (COL(ep) != 0 && color[ep - 11] == DARK && piece[ep - 11] == PAWN)
+				gen_push(ep - 11, ep, 21);
+			if (COL(ep) != 9 && color[ep - 9] == DARK && piece[ep - 9] == PAWN)
 				gen_push(ep - 9, ep, 21);
-			if (COL(ep) != 7 && color[ep - 7] == DARK && piece[ep - 7] == PAWN)
-				gen_push(ep - 7, ep, 21);
 		}
 	}
 }
@@ -192,31 +218,34 @@ void genEnPassant()
 void genPawn(int i)
 {
 	if (side == LIGHT) {
-		if (COL(i) != 0 && color[i - 9] == DARK)
+		if (COL(i) != 0 && color[i - 11] == DARK)
+			gen_push(i, i - 11, 17);
+		if (COL(i) != 9 && color[i - 9] == DARK)
 			gen_push(i, i - 9, 17);
-		if (COL(i) != 7 && color[i - 7] == DARK)
-			gen_push(i, i - 7, 17);
-		if (color[i - 8] == EMPTY) {
-			gen_push(i, i - 8, 16);
-			if (i >= 48 && color[i - 16] == EMPTY)
-				gen_push(i, i - 16, 24);
+		if (color[i - 10] == EMPTY) {
+			gen_push(i, i - 10, 16);
+			if (i >= 60 && color[i - 20] == EMPTY)
+				gen_push(i, i - 20, 24);
 		}
 	}
 	else {
-		if (COL(i) != 0 && color[i + 7] == LIGHT)
-			gen_push(i, i + 7, 17);
-		if (COL(i) != 7 && color[i + 9] == LIGHT)
+		if (COL(i) != 0 && color[i + 9] == LIGHT)
 			gen_push(i, i + 9, 17);
-		if (color[i + 8] == EMPTY) {
-			gen_push(i, i + 8, 16);
-			if (i <= 15 && color[i + 16] == EMPTY)
-				gen_push(i, i + 16, 24);
+		if (COL(i) != 9 && color[i + 11] == LIGHT)
+			gen_push(i, i + 11, 17);
+		if (color[i + 10] == EMPTY) {
+			gen_push(i, i + 10, 16);
+			if (i <= 19 && color[i + 20] == EMPTY)
+				gen_push(i, i + 20, 24);
 		}
 	}
 }
 
 void genPiece(int i)
 {
+	int is_amazon = (piece[i] == AMAZON);
+	
+	/* Generate queen-like moves */
 	for (int j = 0; j < offsets[piece[i]]; ++j)
 	{
 		int n = i;
@@ -230,9 +259,20 @@ void genPiece(int i)
 					break;
 			}
 			else {
-				if (color[n] == xside)
+				if (color[n] == xside && !is_amazon)  /* Amazon cannot capture */
 					gen_push(i, n, 1);
 				break;
+			}
+		}
+	}
+	
+	/* For Amazon, also generate knight moves (cannot capture) */
+	if (is_amazon) {
+		int knight_offsets[8] = { -25, -23, -14, -10, 10, 14, 23, 25 };
+		for (int j = 0; j < 8; ++j) {
+			int n = mailbox[mailbox64[i] + knight_offsets[j]];
+			if (n != -1 && color[n] == EMPTY) {
+				gen_push(i, n, 0);
 			}
 		}
 	}
@@ -255,7 +295,7 @@ void genSidePiece(int i)
 void genMoves()
 {
 
-	for (int i = 0; i < 64; ++i)
+	for (int i = 0; i < 80; ++i)
 	{
 		if (color[i] == side) {
 			genSidePiece(i);
@@ -293,24 +333,45 @@ void gen_caps()
 	int i, j, n;
 
 	first_move[ply + 1] = first_move[ply];
-	for (i = 0; i < 64; ++i)
+	for (i = 0; i < 80; ++i)
 		if (color[i] == side) {
 			if (piece[i] == PAWN) {
 				if (side == LIGHT) {
-					if (COL(i) != 0 && color[i - 9] == DARK)
+					if (COL(i) != 0 && color[i - 11] == DARK)
+						gen_push(i, i - 11, 17);
+					if (COL(i) != 9 && color[i - 9] == DARK)
 						gen_push(i, i - 9, 17);
-					if (COL(i) != 7 && color[i - 7] == DARK)
-						gen_push(i, i - 7, 17);
-					if (i <= 15 && color[i - 8] == EMPTY)
-						gen_push(i, i - 8, 16);
+					if (i <= 19 && color[i - 10] == EMPTY)
+						gen_push(i, i - 10, 16);
 				}
 				if (side == DARK) {
-					if (COL(i) != 0 && color[i + 7] == LIGHT)
-						gen_push(i, i + 7, 17);
-					if (COL(i) != 7 && color[i + 9] == LIGHT)
+					if (COL(i) != 0 && color[i + 9] == LIGHT)
 						gen_push(i, i + 9, 17);
-					if (i >= 48 && color[i + 8] == EMPTY)
-						gen_push(i, i + 8, 16);
+					if (COL(i) != 9 && color[i + 11] == LIGHT)
+						gen_push(i, i + 11, 17);
+					if (i >= 60 && color[i + 10] == EMPTY)
+						gen_push(i, i + 10, 16);
+				}
+			}
+			else if (piece[i] == AMAZON) {
+				/* Amazon cannot capture, so only generate non-capture moves */
+				for (j = 0; j < offsets[piece[i]]; ++j)
+					for (n = i;;) {
+						n = mailbox[mailbox64[n] + offset[piece[i]][j]];
+						if (n == -1)
+							break;
+						if (color[n] != EMPTY)
+							break;
+						if (!slide[piece[i]])
+							break;
+					}
+				/* Knight moves for Amazon (non-capture only) */
+				int knight_offsets[8] = { -25, -23, -14, -10, 10, 14, 23, 25 };
+				for (j = 0; j < 8; ++j) {
+					n = mailbox[mailbox64[i] + knight_offsets[j]];
+					if (n != -1 && color[n] == EMPTY) {
+						/* Don't generate in gen_caps since Amazon cannot capture */
+					}
 				}
 			}
 			else
@@ -330,16 +391,16 @@ void gen_caps()
 		}
 	if (ep != -1) {
 		if (side == LIGHT) {
-			if (COL(ep) != 0 && color[ep + 7] == LIGHT && piece[ep + 7] == PAWN)
-				gen_push(ep + 7, ep, 21);
-			if (COL(ep) != 7 && color[ep + 9] == LIGHT && piece[ep + 9] == PAWN)
+			if (COL(ep) != 0 && color[ep + 9] == LIGHT && piece[ep + 9] == PAWN)
 				gen_push(ep + 9, ep, 21);
+			if (COL(ep) != 9 && color[ep + 11] == LIGHT && piece[ep + 11] == PAWN)
+				gen_push(ep + 11, ep, 21);
 		}
 		else {
-			if (COL(ep) != 0 && color[ep - 9] == DARK && piece[ep - 9] == PAWN)
+			if (COL(ep) != 0 && color[ep - 11] == DARK && piece[ep - 11] == PAWN)
+				gen_push(ep - 11, ep, 21);
+			if (COL(ep) != 9 && color[ep - 9] == DARK && piece[ep - 9] == PAWN)
 				gen_push(ep - 9, ep, 21);
-			if (COL(ep) != 7 && color[ep - 7] == DARK && piece[ep - 7] == PAWN)
-				gen_push(ep - 7, ep, 21);
 		}
 	}
 }
@@ -360,13 +421,13 @@ void gen_push(int from, int to, int bits)
 
 	if (bits & 16) {
 		if (side == LIGHT) {
-			if (to <= H8) {
+			if (to <= J8) {  /* promotion to rank 8 */
 				gen_promote(from, to, bits);
 				return;
 			}
 		}
 		else {
-			if (to >= A1) {
+			if (to >= A1) {  /* promotion to rank 1 */
 				gen_promote(from, to, bits);
 				return;
 			}
@@ -418,33 +479,33 @@ BOOL makemove(move_bytes m)
 		if (in_check(side))
 			return FALSE;
 		switch (m.to) {
-		case 62:
-			if (color[F1] != EMPTY || color[G1] != EMPTY ||
-				attack(F1, xside) || attack(G1, xside))
+		case 77:  /* H1 - white kingside: King f1->h1, Rook j1->g1 */
+			if (color[G1] != EMPTY || color[H1] != EMPTY ||
+				attack(G1, xside) || attack(H1, xside))
 				return FALSE;
-			from = H1;
-			to = F1;
+			from = J1;
+			to = G1;
 			break;
-		case 58:
-			if (color[B1] != EMPTY || color[C1] != EMPTY || color[D1] != EMPTY ||
-				attack(C1, xside) || attack(D1, xside))
+		case 73:  /* D1 - white queenside: King f1->d1, Rook a1->e1 */
+			if (color[B1] != EMPTY || color[C1] != EMPTY || color[D1] != EMPTY || color[E1] != EMPTY ||
+				attack(D1, xside) || attack(E1, xside))
 				return FALSE;
 			from = A1;
-			to = D1;
+			to = E1;
 			break;
-		case 6:
-			if (color[F8] != EMPTY || color[G8] != EMPTY ||
-				attack(F8, xside) || attack(G8, xside))
+		case 7:  /* H8 - black kingside: King f8->h8, Rook j8->g8 */
+			if (color[G8] != EMPTY || color[H8] != EMPTY ||
+				attack(G8, xside) || attack(H8, xside))
 				return FALSE;
-			from = H8;
-			to = F8;
+			from = J8;
+			to = G8;
 			break;
-		case 2:
-			if (color[B8] != EMPTY || color[C8] != EMPTY || color[D8] != EMPTY ||
-				attack(C8, xside) || attack(D8, xside))
+		case 3:  /* D8 - black queenside: King f8->d8, Rook a8->e8 */
+			if (color[B8] != EMPTY || color[C8] != EMPTY || color[D8] != EMPTY || color[E8] != EMPTY ||
+				attack(D8, xside) || attack(E8, xside))
 				return FALSE;
 			from = A8;
-			to = D8;
+			to = E8;
 			break;
 		default:  /* shouldn't get here */
 			from = -1;
@@ -472,9 +533,9 @@ BOOL makemove(move_bytes m)
 	castle &= castle_mask[(int)m.from] & castle_mask[(int)m.to];
 	if (m.bits & 8) {
 		if (side == LIGHT)
-			ep = m.to + 8;
+			ep = m.to + 10;
 		else
-			ep = m.to - 8;
+			ep = m.to - 10;
 	}
 	else
 		ep = -1;
@@ -495,12 +556,12 @@ BOOL makemove(move_bytes m)
 	/* erase the pawn if this is an en passant move */
 	if (m.bits & 4) {
 		if (side == LIGHT) {
-			color[m.to + 8] = EMPTY;
-			piece[m.to + 8] = EMPTY;
+			color[m.to + 10] = EMPTY;
+			piece[m.to + 10] = EMPTY;
 		}
 		else {
-			color[m.to - 8] = EMPTY;
-			piece[m.to - 8] = EMPTY;
+			color[m.to - 10] = EMPTY;
+			piece[m.to - 10] = EMPTY;
 		}
 	}
 
@@ -550,20 +611,20 @@ void takeback()
 		int from, to;
 
 		switch (m.to) {
-		case 62:
-			from = F1;
-			to = H1;
+		case 77:  /* H1 - white kingside */
+			from = G1;
+			to = J1;
 			break;
-		case 58:
-			from = D1;
+		case 73:  /* D1 - white queenside */
+			from = E1;
 			to = A1;
 			break;
-		case 6:
-			from = F8;
-			to = H8;
+		case 7:  /* H8 - black kingside */
+			from = G8;
+			to = J8;
 			break;
-		case 2:
-			from = D8;
+		case 3:  /* D8 - black queenside */
+			from = E8;
 			to = A8;
 			break;
 		default:  /* shouldn't get here */
@@ -578,12 +639,12 @@ void takeback()
 	}
 	if (m.bits & 4) {
 		if (side == LIGHT) {
-			color[m.to + 8] = xside;
-			piece[m.to + 8] = PAWN;
+			color[m.to + 10] = xside;
+			piece[m.to + 10] = PAWN;
 		}
 		else {
-			color[m.to - 8] = xside;
-			piece[m.to - 8] = PAWN;
+			color[m.to - 10] = xside;
+			piece[m.to - 10] = PAWN;
 		}
 	}
 }
