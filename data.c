@@ -10,8 +10,8 @@
 
 
 /* the board representation */
-int color[64];  /* LIGHT, DARK, or EMPTY */
-int piece[64];  /* PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING, or EMPTY */
+int color[80];  /* LIGHT, DARK, or EMPTY */
+int piece[80];  /* PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING, COMMONER, AMAZON, or EMPTY */
 int side;  /* the side to move */
 int xside;  /* the side not to move */
 int castle;  /* a bitfield with the castle permissions. if 1 is set,
@@ -36,7 +36,7 @@ gen_t gen_dat[GEN_STACK];
 int first_move[MAX_PLY];
 
 /* the history heuristic array (used for move ordering) */
-int history[64][64];
+int history[80][80];
 
 /* we need an array of hist_t's so we can take back the
    moves we make */
@@ -60,9 +60,9 @@ int pv_length[MAX_PLY];
 BOOL follow_pv;
 
 /* random numbers used to compute hash; see set_hash() in board.c */
-int hash_piece[2][6][64];  /* indexed by piece [color][type][square] */
+int hash_piece[2][8][80];  /* indexed by piece [color][type][square] */
 int hash_side;
-int hash_ep[64];
+int hash_ep[80];
 
 /* Now we have the mailbox array, so called because it looks like a
    mailbox, at least according to Bob Hyatt. This is useful when we
@@ -76,30 +76,31 @@ int hash_ep[64];
    bounds and we can forget it. You can see how mailbox[] is used
    in attack() in board.c. */
 
-int mailbox[120] = {
-	 -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	 -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	 -1,  0,  1,  2,  3,  4,  5,  6,  7, -1,
-	 -1,  8,  9, 10, 11, 12, 13, 14, 15, -1,
-	 -1, 16, 17, 18, 19, 20, 21, 22, 23, -1,
-	 -1, 24, 25, 26, 27, 28, 29, 30, 31, -1,
-	 -1, 32, 33, 34, 35, 36, 37, 38, 39, -1,
-	 -1, 40, 41, 42, 43, 44, 45, 46, 47, -1,
-	 -1, 48, 49, 50, 51, 52, 53, 54, 55, -1,
-	 -1, 56, 57, 58, 59, 60, 61, 62, 63, -1,
-	 -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	 -1, -1, -1, -1, -1, -1, -1, -1, -1, -1
+int mailbox[156] = {
+	 -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+	 -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+	 -1,  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, -1,
+	 -1, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, -1,
+	 -1, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, -1,
+	 -1, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, -1,
+	 -1, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, -1,
+	 -1, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, -1,
+	 -1, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, -1,
+	 -1, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, -1,
+	 -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+	 -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+	 -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1
 };
 
-int mailbox64[64] = {
-	21, 22, 23, 24, 25, 26, 27, 28,
-	31, 32, 33, 34, 35, 36, 37, 38,
-	41, 42, 43, 44, 45, 46, 47, 48,
-	51, 52, 53, 54, 55, 56, 57, 58,
-	61, 62, 63, 64, 65, 66, 67, 68,
-	71, 72, 73, 74, 75, 76, 77, 78,
-	81, 82, 83, 84, 85, 86, 87, 88,
-	91, 92, 93, 94, 95, 96, 97, 98
+int mailbox64[80] = {
+	26, 27, 28, 29, 30, 31, 32, 33, 34, 35,
+	38, 39, 40, 41, 42, 43, 44, 45, 46, 47,
+	50, 51, 52, 53, 54, 55, 56, 57, 58, 59,
+	62, 63, 64, 65, 66, 67, 68, 69, 70, 71,
+	74, 75, 76, 77, 78, 79, 80, 81, 82, 83,
+	86, 87, 88, 89, 90, 91, 92, 93, 94, 95,
+	98, 99, 100, 101, 102, 103, 104, 105, 106, 107,
+	110, 111, 112, 113, 114, 115, 116, 117, 118, 119
 };
 
 
@@ -107,23 +108,31 @@ int mailbox64[64] = {
    pieces can move in. If slide for the piece is FALSE, it can
    only move one square in any one direction. offsets is the
    number of directions it can move in, and offset is an array
-   of the actual directions. */
+   of the actual directions. For 10x8 board: row offset = 12 (mailbox width)
+   Knight: row±1,col±2 or row±2,col±1
+   Bishop: diagonal = ±11, ±13
+   Rook: horizontal/vertical = ±1, ±12
+   Queen/King: all 8 directions = ±1, ±11, ±12, ±13
+   Commoner: like King
+   Amazon: Queen + Knight (slides like Queen, jumps like Knight) */
 
-BOOL slide[6] = {
-	FALSE, FALSE, TRUE, TRUE, TRUE, FALSE
+BOOL slide[8] = {
+	FALSE, FALSE, TRUE, TRUE, TRUE, FALSE, FALSE, TRUE
 };
 
-int offsets[6] = {
-	0, 8, 4, 4, 8, 8
+int offsets[8] = {
+	0, 8, 4, 4, 8, 8, 8, 8
 };
 
-int offset[6][8] = {
-	{ 0, 0, 0, 0, 0, 0, 0, 0 },
-	{ -21, -19, -12, -8, 8, 12, 19, 21 },
-	{ -11, -9, 9, 11, 0, 0, 0, 0 },
-	{ -10, -1, 1, 10, 0, 0, 0, 0 },
-	{ -11, -10, -9, -1, 1, 9, 10, 11 },
-	{ -11, -10, -9, -1, 1, 9, 10, 11 }
+int offset[8][8] = {
+	{ 0, 0, 0, 0, 0, 0, 0, 0 },           /* PAWN */
+	{ -25, -23, -14, -10, 10, 14, 23, 25 }, /* KNIGHT */
+	{ -13, -11, 11, 13, 0, 0, 0, 0 },     /* BISHOP */
+	{ -12, -1, 1, 12, 0, 0, 0, 0 },       /* ROOK */
+	{ -13, -12, -11, -1, 1, 11, 12, 13 }, /* QUEEN */
+	{ -13, -12, -11, -1, 1, 11, 12, 13 }, /* KING */
+	{ -13, -12, -11, -1, 1, 11, 12, 13 }, /* COMMONER */
+	{ -13, -12, -11, -1, 1, 11, 12, 13 }  /* AMAZON (queen moves, knight handled separately) */
 };
 
 
@@ -132,48 +141,55 @@ int offset[6][8] = {
    logical-AND the castle bits with the castle_mask bits for
    both of the move's squares. Let's say castle is 1, meaning
    that white can still castle kingside. Now we play a move
-   where the rook on h1 gets captured. We AND castle with
-   castle_mask[63], so we have 1&14, and castle becomes 0 and
-   white can't castle kingside anymore. */
+   where the rook on j1 gets captured. We AND castle with
+   castle_mask[79], so we have 1&14, and castle becomes 0 and
+   white can't castle kingside anymore. 
+   For 10x8 board: A1=70, E1=74 (king), J1=79, A8=0, E8=4 (king), J8=9 */
 
-int castle_mask[64] = {
-	 7, 15, 15, 15,  3, 15, 15, 11,
-	15, 15, 15, 15, 15, 15, 15, 15,
-	15, 15, 15, 15, 15, 15, 15, 15,
-	15, 15, 15, 15, 15, 15, 15, 15,
-	15, 15, 15, 15, 15, 15, 15, 15,
-	15, 15, 15, 15, 15, 15, 15, 15,
-	15, 15, 15, 15, 15, 15, 15, 15,
-	13, 15, 15, 15, 12, 15, 15, 14
+int castle_mask[80] = {
+	 7, 15, 15, 15,  3, 15, 15, 15, 15, 11,  /* rank 8: a8=7, e8=3, j8=11 */
+	15, 15, 15, 15, 15, 15, 15, 15, 15, 15,  /* rank 7 */
+	15, 15, 15, 15, 15, 15, 15, 15, 15, 15,  /* rank 6 */
+	15, 15, 15, 15, 15, 15, 15, 15, 15, 15,  /* rank 5 */
+	15, 15, 15, 15, 15, 15, 15, 15, 15, 15,  /* rank 4 */
+	15, 15, 15, 15, 15, 15, 15, 15, 15, 15,  /* rank 3 */
+	15, 15, 15, 15, 15, 15, 15, 15, 15, 15,  /* rank 2 */
+	13, 15, 15, 15, 12, 15, 15, 15, 15, 14   /* rank 1: a1=13, e1=12, j1=14 */
 };
 
 
 /* the piece letters, for print_board() */
-char piece_char[6] = {
-	'P', 'N', 'B', 'R', 'Q', 'K'
+char piece_char[8] = {
+	'P', 'N', 'B', 'R', 'Q', 'K', 'G', 'W'
 };
 
 
-/* the initial board state */
+/* the initial board state 
+   FEN: rgnbkqbnwr/pppppppppp/10/10/10/10/PPPPPPPPPP/RWNBQKBNGR w KQkq - 0 1
+   Rank 8 (0-9): r g n b k q b n w r
+   Rank 7 (10-19): p p p p p p p p p p
+   Ranks 6-3 (20-59): empty
+   Rank 2 (60-69): P P P P P P P P P P
+   Rank 1 (70-79): R W N B Q K B N G R */
 
-int init_color[64] = {
-	1, 1, 1, 1, 1, 1, 1, 1,
-	1, 1, 1, 1, 1, 1, 1, 1,
-	6, 6, 6, 6, 6, 6, 6, 6,
-	6, 6, 6, 6, 6, 6, 6, 6,
-	6, 6, 6, 6, 6, 6, 6, 6,
-	6, 6, 6, 6, 6, 6, 6, 6,
-	0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0
+int init_color[80] = {
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  /* rank 8 */
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  /* rank 7 */
+	8, 8, 8, 8, 8, 8, 8, 8, 8, 8,  /* rank 6 */
+	8, 8, 8, 8, 8, 8, 8, 8, 8, 8,  /* rank 5 */
+	8, 8, 8, 8, 8, 8, 8, 8, 8, 8,  /* rank 4 */
+	8, 8, 8, 8, 8, 8, 8, 8, 8, 8,  /* rank 3 */
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  /* rank 2 */
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0   /* rank 1 */
 };
 
-int init_piece[64] = {
-	3, 1, 2, 4, 5, 2, 1, 3,
-	0, 0, 0, 0, 0, 0, 0, 0,
-	6, 6, 6, 6, 6, 6, 6, 6,
-	6, 6, 6, 6, 6, 6, 6, 6,
-	6, 6, 6, 6, 6, 6, 6, 6,
-	6, 6, 6, 6, 6, 6, 6, 6,
-	0, 0, 0, 0, 0, 0, 0, 0,
-	3, 1, 2, 4, 5, 2, 1, 3
+int init_piece[80] = {
+	3, 6, 1, 2, 5, 4, 2, 1, 7, 3,  /* rank 8: r g n b k q b n w r */
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  /* rank 7: pawns */
+	8, 8, 8, 8, 8, 8, 8, 8, 8, 8,  /* rank 6 */
+	8, 8, 8, 8, 8, 8, 8, 8, 8, 8,  /* rank 5 */
+	8, 8, 8, 8, 8, 8, 8, 8, 8, 8,  /* rank 4 */
+	8, 8, 8, 8, 8, 8, 8, 8, 8, 8,  /* rank 3 */
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  /* rank 2: pawns */
+	3, 7, 1, 2, 4, 5, 2, 1, 6, 3   /* rank 1: R W N B Q K B N G R */
 };

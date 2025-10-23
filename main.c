@@ -165,16 +165,16 @@ int parse_move(char *s)
 	int from, to, i;
 
 	/* make sure the string looks like a move */
-	if (s[0] < 'a' || s[0] > 'h' ||
+	if (s[0] < 'a' || s[0] > 'j' ||
 			s[1] < '0' || s[1] > '9' ||
-			s[2] < 'a' || s[2] > 'h' ||
+			s[2] < 'a' || s[2] > 'j' ||
 			s[3] < '0' || s[3] > '9')
 		return -1;
 
 	from = s[0] - 'a';
-	from += 8 * (8 - (s[1] - '0'));
+	from += 10 * (8 - (s[1] - '0'));
 	to = s[2] - 'a';
-	to += 8 * (8 - (s[3] - '0'));
+	to += 10 * (8 - (s[3] - '0'));
 
 	for (i = 0; i < first_move[1]; ++i)
 		if (gen_dat[i].m.b.from == from && gen_dat[i].m.b.to == to) {
@@ -251,7 +251,7 @@ void print_board()
 	int i;
 	
 	printf("\n8 ");
-	for (i = 0; i < 64; ++i) {
+	for (i = 0; i < 80; ++i) {
 		switch (color[i]) {
 			case EMPTY:
 				printf(" .");
@@ -263,10 +263,10 @@ void print_board()
 				printf(" %c", piece_char[piece[i]] + ('a' - 'A'));
 				break;
 		}
-		if ((i + 1) % 8 == 0 && i != 63)
+		if ((i + 1) % 10 == 0 && i != 79)
 			printf("\n%d ", 7 - ROW(i));
 	}
-	printf("\n\n   a b c d e f g h\n\n");
+	printf("\n\n   a b c d e f g h i j\n\n");
 }
 
 
@@ -440,26 +440,26 @@ void print_result()
    Then it searches five ply three times. It calculates nodes per
    second from the best time. */
 
-int bench_color[64] = {
-	6, 1, 1, 6, 6, 1, 1, 6,
-	1, 6, 6, 6, 6, 1, 1, 1,
-	6, 1, 6, 1, 1, 6, 1, 6,
-	6, 6, 6, 1, 6, 6, 0, 6,
-	6, 6, 1, 0, 6, 6, 6, 6,
-	6, 6, 0, 6, 6, 6, 0, 6,
-	0, 0, 0, 6, 6, 0, 0, 0,
-	0, 6, 0, 6, 0, 6, 0, 6
+int bench_color[80] = {
+	8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+	8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+	8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+	8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+	8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+	8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+	8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+	8, 8, 8, 8, 8, 8, 8, 8, 8, 8
 };
 
-int bench_piece[64] = {
-	6, 3, 2, 6, 6, 3, 5, 6,
-	0, 6, 6, 6, 6, 0, 0, 0,
-	6, 0, 6, 4, 0, 6, 1, 6,
-	6, 6, 6, 1, 6, 6, 1, 6,
-	6, 6, 0, 0, 6, 6, 6, 6,
-	6, 6, 0, 6, 6, 6, 0, 6,
-	0, 0, 4, 6, 6, 0, 2, 0,
-	3, 6, 2, 6, 3, 6, 5, 6
+int bench_piece[80] = {
+	8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+	8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+	8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+	8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+	8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+	8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+	8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
+	8, 8, 8, 8, 8, 8, 8, 8, 8, 8
 };
 
 void bench()
@@ -472,7 +472,7 @@ void bench()
 	   book code. */
 	close_book();
 
-	for (i = 0; i < 64; ++i) {
+	for (i = 0; i < 80; ++i) {
 		color[i] = bench_color[i];
 		piece[i] = bench_piece[i];
 	}

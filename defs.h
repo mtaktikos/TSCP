@@ -23,18 +23,22 @@
 #define ROOK			3
 #define QUEEN			4
 #define KING			5
+#define COMMONER		6
+#define AMAZON			7
 
-#define EMPTY			6
+#define EMPTY			8
 
 /* useful squares */
-#define A1				56
-#define B1				57
-#define C1				58
-#define D1				59
-#define E1				60
-#define F1				61
-#define G1				62
-#define H1				63
+#define A1				70
+#define B1				71
+#define C1				72
+#define D1				73
+#define E1				74
+#define F1				75
+#define G1				76
+#define H1				77
+#define I1				78
+#define J1				79
 #define A8				0
 #define B8				1
 #define C8				2
@@ -43,9 +47,11 @@
 #define F8				5
 #define G8				6
 #define H8				7
+#define I8				8
+#define J8				9
 
-#define ROW(x)			(x >> 3)
-#define COL(x)			(x & 7)
+#define ROW(x)			((x) / 10)
+#define COL(x)			((x) % 10)
 
 
 /* This is the basic description of a move. promote is what

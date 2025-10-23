@@ -22,82 +22,82 @@
 
 
 /* the values of the pieces */
-int piece_value[6] = {
-	100, 300, 300, 500, 900, 0
+int piece_value[8] = {
+	100, 300, 300, 500, 900, 0, 200, 1200
 };
 
 /* The "pcsq" arrays are piece/square tables. They're values
    added to the material value of the piece based on the
-   location of the piece. */
+   location of the piece. Extended for 10x8 board */
 
-int pawn_pcsq[64] = {
-	  0,   0,   0,   0,   0,   0,   0,   0,
-	  5,  10,  15,  20,  20,  15,  10,   5,
-	  4,   8,  12,  16,  16,  12,   8,   4,
-	  3,   6,   9,  12,  12,   9,   6,   3,
-	  2,   4,   6,   8,   8,   6,   4,   2,
-	  1,   2,   3, -10, -10,   3,   2,   1,
-	  0,   0,   0, -40, -40,   0,   0,   0,
-	  0,   0,   0,   0,   0,   0,   0,   0
+int pawn_pcsq[80] = {
+	  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+	  5,  10,  15,  20,  20,  20,  20,  15,  10,   5,
+	  4,   8,  12,  16,  16,  16,  16,  12,   8,   4,
+	  3,   6,   9,  12,  12,  12,  12,   9,   6,   3,
+	  2,   4,   6,   8,   8,   8,   8,   6,   4,   2,
+	  1,   2,   3, -10, -10, -10, -10,   3,   2,   1,
+	  0,   0,   0, -40, -40, -40, -40,   0,   0,   0,
+	  0,   0,   0,   0,   0,   0,   0,   0,   0,   0
 };
 
-int knight_pcsq[64] = {
-	-10, -10, -10, -10, -10, -10, -10, -10,
-	-10,   0,   0,   0,   0,   0,   0, -10,
-	-10,   0,   5,   5,   5,   5,   0, -10,
-	-10,   0,   5,  10,  10,   5,   0, -10,
-	-10,   0,   5,  10,  10,   5,   0, -10,
-	-10,   0,   5,   5,   5,   5,   0, -10,
-	-10,   0,   0,   0,   0,   0,   0, -10,
-	-10, -30, -10, -10, -10, -10, -30, -10
+int knight_pcsq[80] = {
+	-10, -10, -10, -10, -10, -10, -10, -10, -10, -10,
+	-10,   0,   0,   0,   0,   0,   0,   0,   0, -10,
+	-10,   0,   5,   5,   5,   5,   5,   5,   0, -10,
+	-10,   0,   5,  10,  10,  10,  10,   5,   0, -10,
+	-10,   0,   5,  10,  10,  10,  10,   5,   0, -10,
+	-10,   0,   5,   5,   5,   5,   5,   5,   0, -10,
+	-10,   0,   0,   0,   0,   0,   0,   0,   0, -10,
+	-10, -30, -10, -10, -10, -10, -10, -10, -30, -10
 };
 
-int bishop_pcsq[64] = {
-	-10, -10, -10, -10, -10, -10, -10, -10,
-	-10,   0,   0,   0,   0,   0,   0, -10,
-	-10,   0,   5,   5,   5,   5,   0, -10,
-	-10,   0,   5,  10,  10,   5,   0, -10,
-	-10,   0,   5,  10,  10,   5,   0, -10,
-	-10,   0,   5,   5,   5,   5,   0, -10,
-	-10,   0,   0,   0,   0,   0,   0, -10,
-	-10, -10, -20, -10, -10, -20, -10, -10
+int bishop_pcsq[80] = {
+	-10, -10, -10, -10, -10, -10, -10, -10, -10, -10,
+	-10,   0,   0,   0,   0,   0,   0,   0,   0, -10,
+	-10,   0,   5,   5,   5,   5,   5,   5,   0, -10,
+	-10,   0,   5,  10,  10,  10,  10,   5,   0, -10,
+	-10,   0,   5,  10,  10,  10,  10,   5,   0, -10,
+	-10,   0,   5,   5,   5,   5,   5,   5,   0, -10,
+	-10,   0,   0,   0,   0,   0,   0,   0,   0, -10,
+	-10, -10, -20, -10, -10, -10, -10, -20, -10, -10
 };
 
-int king_pcsq[64] = {
-	-40, -40, -40, -40, -40, -40, -40, -40,
-	-40, -40, -40, -40, -40, -40, -40, -40,
-	-40, -40, -40, -40, -40, -40, -40, -40,
-	-40, -40, -40, -40, -40, -40, -40, -40,
-	-40, -40, -40, -40, -40, -40, -40, -40,
-	-40, -40, -40, -40, -40, -40, -40, -40,
-	-20, -20, -20, -20, -20, -20, -20, -20,
-	  0,  20,  40, -20,   0, -20,  40,  20
+int king_pcsq[80] = {
+	-40, -40, -40, -40, -40, -40, -40, -40, -40, -40,
+	-40, -40, -40, -40, -40, -40, -40, -40, -40, -40,
+	-40, -40, -40, -40, -40, -40, -40, -40, -40, -40,
+	-40, -40, -40, -40, -40, -40, -40, -40, -40, -40,
+	-40, -40, -40, -40, -40, -40, -40, -40, -40, -40,
+	-40, -40, -40, -40, -40, -40, -40, -40, -40, -40,
+	-20, -20, -20, -20, -20, -20, -20, -20, -20, -20,
+	  0,  20,  40, -20,   0,   0, -20,  40,  20,   0
 };
 
-int king_endgame_pcsq[64] = {
-	  0,  10,  20,  30,  30,  20,  10,   0,
-	 10,  20,  30,  40,  40,  30,  20,  10,
-	 20,  30,  40,  50,  50,  40,  30,  20,
-	 30,  40,  50,  60,  60,  50,  40,  30,
-	 30,  40,  50,  60,  60,  50,  40,  30,
-	 20,  30,  40,  50,  50,  40,  30,  20,
-	 10,  20,  30,  40,  40,  30,  20,  10,
-	  0,  10,  20,  30,  30,  20,  10,   0
+int king_endgame_pcsq[80] = {
+	  0,  10,  20,  30,  30,  30,  30,  20,  10,   0,
+	 10,  20,  30,  40,  40,  40,  40,  30,  20,  10,
+	 20,  30,  40,  50,  50,  50,  50,  40,  30,  20,
+	 30,  40,  50,  60,  60,  60,  60,  50,  40,  30,
+	 30,  40,  50,  60,  60,  60,  60,  50,  40,  30,
+	 20,  30,  40,  50,  50,  50,  50,  40,  30,  20,
+	 10,  20,  30,  40,  40,  40,  40,  30,  20,  10,
+	  0,  10,  20,  30,  30,  30,  30,  20,  10,   0
 };
 
 /* The flip array is used to calculate the piece/square
    values for DARK pieces. The piece/square value of a
    LIGHT pawn is pawn_pcsq[sq] and the value of a DARK
    pawn is pawn_pcsq[flip[sq]] */
-int flip[64] = {
-	 56,  57,  58,  59,  60,  61,  62,  63,
-	 48,  49,  50,  51,  52,  53,  54,  55,
-	 40,  41,  42,  43,  44,  45,  46,  47,
-	 32,  33,  34,  35,  36,  37,  38,  39,
-	 24,  25,  26,  27,  28,  29,  30,  31,
-	 16,  17,  18,  19,  20,  21,  22,  23,
-	  8,   9,  10,  11,  12,  13,  14,  15,
-	  0,   1,   2,   3,   4,   5,   6,   7
+int flip[80] = {
+	 70,  71,  72,  73,  74,  75,  76,  77,  78,  79,
+	 60,  61,  62,  63,  64,  65,  66,  67,  68,  69,
+	 50,  51,  52,  53,  54,  55,  56,  57,  58,  59,
+	 40,  41,  42,  43,  44,  45,  46,  47,  48,  49,
+	 30,  31,  32,  33,  34,  35,  36,  37,  38,  39,
+	 20,  21,  22,  23,  24,  25,  26,  27,  28,  29,
+	 10,  11,  12,  13,  14,  15,  16,  17,  18,  19,
+	  0,   1,   2,   3,   4,   5,   6,   7,   8,   9
 };
 
 /* pawn_rank[x][y] is the rank of the least advanced pawn of color x on file
@@ -105,7 +105,7 @@ int flip[64] = {
    logic later. If there's no pawn on a rank, we pretend the pawn is
    impossibly far advanced (0 for LIGHT and 7 for DARK). This makes it easy to
    test for pawns on a rank and it simplifies some pawn evaluation code. */
-int pawn_rank[2][10];
+int pawn_rank[2][12];
 
 int piece_mat[2];  /* the value of a side's pieces */
 int pawn_mat[2];  /* the value of a side's pawns */
@@ -117,7 +117,7 @@ int eval()
 	int score[2];  /* each side's score */
 
 	/* this is the first pass: set up pawn_rank, piece_mat, and pawn_mat. */
-	for (i = 0; i < 10; ++i) {
+	for (i = 0; i < 12; ++i) {
 		pawn_rank[LIGHT][i] = 0;
 		pawn_rank[DARK][i] = 7;
 	}
@@ -125,7 +125,7 @@ int eval()
 	piece_mat[DARK] = 0;
 	pawn_mat[LIGHT] = 0;
 	pawn_mat[DARK] = 0;
-	for (i = 0; i < 64; ++i) {
+	for (i = 0; i < 80; ++i) {
 		if (color[i] == EMPTY)
 			continue;
 		if (piece[i] == PAWN) {
@@ -147,7 +147,7 @@ int eval()
 	/* this is the second pass: evaluate each piece */
 	score[LIGHT] = piece_mat[LIGHT] + pawn_mat[LIGHT];
 	score[DARK] = piece_mat[DARK] + pawn_mat[DARK];
-	for (i = 0; i < 64; ++i) {
+	for (i = 0; i < 80; ++i) {
 		if (color[i] == EMPTY)
 			continue;
 		if (color[i] == LIGHT) {
@@ -177,6 +177,13 @@ int eval()
 					else
 						score[LIGHT] += eval_light_king(i);
 					break;
+				case COMMONER:
+					/* Evaluate commoner similarly to king in endgame */
+					score[LIGHT] += king_endgame_pcsq[i] / 2;
+					break;
+				case AMAZON:
+					/* Amazon is very powerful, no positional bonus needed */
+					break;
 			}
 		}
 		else {
@@ -205,6 +212,13 @@ int eval()
 						score[DARK] += king_endgame_pcsq[flip[i]];
 					else
 						score[DARK] += eval_dark_king(i);
+					break;
+				case COMMONER:
+					/* Evaluate commoner similarly to king in endgame */
+					score[DARK] += king_endgame_pcsq[flip[i]] / 2;
+					break;
+				case AMAZON:
+					/* Amazon is very powerful, no positional bonus needed */
 					break;
 			}
 		}
@@ -297,13 +311,13 @@ int eval_light_king(int sq)
 	if (COL(sq) < 3) {
 		r += eval_lkp(1);
 		r += eval_lkp(2);
-		r += eval_lkp(3) / 2;  /* problems with pawns on the c & f files
+		r += eval_lkp(3) / 2;  /* problems with pawns on the c file
 								  are not as severe */
 	}
-	else if (COL(sq) > 4) {
-		r += eval_lkp(8);
-		r += eval_lkp(7);
-		r += eval_lkp(6) / 2;
+	else if (COL(sq) > 6) {
+		r += eval_lkp(10);
+		r += eval_lkp(9);
+		r += eval_lkp(8) / 2;
 	}
 
 	/* otherwise, just assess a penalty if there are open files near
@@ -359,10 +373,10 @@ int eval_dark_king(int sq)
 		r += eval_dkp(2);
 		r += eval_dkp(3) / 2;
 	}
-	else if (COL(sq) > 4) {
-		r += eval_dkp(8);
-		r += eval_dkp(7);
-		r += eval_dkp(6) / 2;
+	else if (COL(sq) > 6) {
+		r += eval_dkp(10);
+		r += eval_dkp(9);
+		r += eval_dkp(8) / 2;
 	}
 	else {
 		for (i = COL(sq); i <= COL(sq) + 2; ++i)
