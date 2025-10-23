@@ -8,6 +8,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include "defs.h"
 #include "data.h"
 #include "protos.h"
