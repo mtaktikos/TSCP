@@ -6,6 +6,7 @@
  */
 
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include "defs.h"
@@ -443,7 +444,6 @@ void gen_promote(int from, int to, int bits)
 
 BOOL makemove(move_bytes m)
 {
-
 	/* test to see if a castle move is legal and move the rook
 	   (the king is moved with the usual move code later) */
 	if (m.bits & 2) {
@@ -501,6 +501,7 @@ BOOL makemove(move_bytes m)
 	hist_dat[hply].gravity_to = -1;  /* will be updated if gravity applies */
 	hist_dat[hply].fall_from = -1;   /* will be updated if piece falls from above */
 	hist_dat[hply].fall_to = -1;     /* will be updated if piece falls from above */
+	hist_dat[hply].cascade_count = 0;  /* will be updated if cascade occurs */
 	
 	/* Check if this is a capture (before we overwrite the destination) */
 	BOOL is_capture = (hist_dat[hply].capture != EMPTY);
@@ -552,46 +553,43 @@ BOOL makemove(move_bytes m)
 		}
 	}
 
-	/* Check if pieces from above should cascade down to fill the starting square */
-	/* m.from is now empty, check if rank < 8 (row > 0) and if there are pieces above */
-	int from_row = ROW(m.from);
-	if (from_row > 0) {  /* rank < 8 */
-		/* Find the topmost piece in the column above m.from */
-		int topmost_sq = -1;
-		int check_sq = m.from - 8;  /* start one rank above */
-		while (ROW(check_sq) >= 0 && COL(check_sq) == COL(m.from)) {
-			if (color[check_sq] != EMPTY) {
-				topmost_sq = check_sq;
-			}
-			if (ROW(check_sq) == 0) break;  /* reached rank 8 */
-			check_sq -= 8;  /* move up one rank */
-		}
+	/* Check if pieces from above should fall to fill the vacated column (cascade effect) */
+	/* When a piece moves away, pieces above it in the same column should fall down */
+	/* to fill the gap, WITHOUT applying additional gravity (they just compress) */
+	int current_empty_sq = m.from;
+	int cascade_idx = 0;
+	
+	while (ROW(current_empty_sq) > 0) {  /* while not at rank 8 */
+		int above_sq = current_empty_sq - 8;  /* check one rank higher */
 		
-		if (topmost_sq != -1) {
-			/* Store the topmost piece position for undo */
-			hist_dat[hply - 1].fall_from = topmost_sq;
-			
-			/* Cascade all pieces down by one square (shift operation) */
-			/* Start from m.from and work our way up to topmost_sq */
-			int target_sq = m.from;  /* where to move the next piece */
-			int source_sq = m.from - 8;  /* where to get the next piece from */
-			
-			while (source_sq >= topmost_sq && ROW(source_sq) >= 0 && COL(source_sq) == COL(m.from)) {
-				if (color[source_sq] != EMPTY) {
-					/* Move this piece down to target_sq */
-					color[target_sq] = color[source_sq];
-					piece[target_sq] = piece[source_sq];
-					color[source_sq] = EMPTY;
-					piece[source_sq] = EMPTY;
-					
-					target_sq = source_sq;  /* next piece will fill this spot */
-				}
-				source_sq -= 8;  /* move up to check next piece */
-			}
-			
-			/* Store where we stopped (for verification/debugging) */
-			hist_dat[hply - 1].fall_to = target_sq;
-		}
+		if (color[above_sq] == EMPTY)
+			break;  /* no more pieces above, done */
+		
+		/* There's a piece above that needs to fall down one rank */
+		/* Record this piece's original position */
+		hist_dat[hply - 1].cascade_from[cascade_idx] = above_sq;
+		
+		/* Move the piece down to the current empty square (just one rank, no extra gravity) */
+		color[current_empty_sq] = color[above_sq];
+		piece[current_empty_sq] = piece[above_sq];
+		color[above_sq] = EMPTY;
+		piece[above_sq] = EMPTY;
+		
+		/* Record where this piece ended up (just one rank down) */
+		hist_dat[hply - 1].cascade_to[cascade_idx] = current_empty_sq;
+		cascade_idx++;
+		
+		/* Now check if there's another piece above the one that just fell */
+		current_empty_sq = above_sq;
+	}
+	
+	/* Store the number of pieces that fell in the cascade */
+	hist_dat[hply - 1].cascade_count = cascade_idx;
+	
+	/* For backward compatibility, also set fall_from/fall_to for the first piece */
+	if (cascade_idx > 0) {
+		hist_dat[hply - 1].fall_from = hist_dat[hply - 1].cascade_from[0];
+		hist_dat[hply - 1].fall_to = hist_dat[hply - 1].cascade_to[0];
 	}
 
 	/* switch sides and test for legality (if we can capture
@@ -625,27 +623,18 @@ void takeback()
 	fifty = hist_dat[hply].fifty;
 	hash = hist_dat[hply].hash;
 	
-	/* First, undo any pieces that fell from above due to cascade */
-	if (hist_dat[hply].fall_from != -1) {
-		int fall_from = hist_dat[hply].fall_from;
-		int col = COL(m.from);
-		
-		/* Reverse the cascade by moving pieces back up by one square */
-		/* fall_from is ABOVE m.from (lower square number, higher rank) */
-		/* We need to move pieces up: from fall_from to m.from-8 */
-		/* Iterate from fall_from UP to m.from-8 (increasing square numbers) */
-		for (int sq = fall_from; sq < m.from; sq += 8) {
-			if (ROW(sq) > 7 || COL(sq) != col) break;
+	/* First, undo any pieces that fell in a cascade */
+	if (hist_dat[hply].cascade_count > 0) {
+		/* Undo the cascade in reverse order (top to bottom) */
+		for (int i = hist_dat[hply].cascade_count - 1; i >= 0; i--) {
+			int fall_from = hist_dat[hply].cascade_from[i];
+			int fall_to = hist_dat[hply].cascade_to[i];
 			
-			int below_sq = sq + 8;  /* the square below where piece currently is */
-			
-			/* Move the piece from below_sq up to sq */
-			if (below_sq <= m.from && color[below_sq] != EMPTY) {
-				color[sq] = color[below_sq];
-				piece[sq] = piece[below_sq];
-				color[below_sq] = EMPTY;
-				piece[below_sq] = EMPTY;
-			}
+			/* The piece is currently at fall_to, restore it to fall_from */
+			color[fall_from] = color[fall_to];
+			piece[fall_from] = piece[fall_to];
+			color[fall_to] = EMPTY;
+			piece[fall_to] = EMPTY;
 		}
 	}
 	
