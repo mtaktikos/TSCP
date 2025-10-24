@@ -194,3 +194,7 @@ int init_piece[80] = {
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  /* rank 2: pawns */
 	3, 7, 1, 2, 4, 5, 2, 1, 6, 3   /* rank 1: R W N B Q K B N G R */
 };
+
+/* transparent array marks squares that are temporarily transparent 
+   (own W pieces and adjacent squares) */
+BOOL transparent[80];
