@@ -286,9 +286,8 @@ void genPawn(int i)
 		/* Pawns can move forward if square is empty or transparent (but can only land on empty) */
 		if (color[i - 10] == EMPTY) {
 			gen_push(i, i - 10, 16);
-			/* Can move 2 squares if both squares are empty or transparent */
-			if (i >= 60 && (color[i - 20] == EMPTY) && 
-			    (color[i - 10] == EMPTY || transparent[i - 10]))
+			/* Can move 2 squares if destination is also empty */
+			if (i >= 60 && color[i - 20] == EMPTY)
 				gen_push(i, i - 20, 24);
 		}
 		else if (transparent[i - 10] && color[i - 10] != EMPTY) {
@@ -305,9 +304,8 @@ void genPawn(int i)
 		/* Pawns can move forward if square is empty or transparent (but can only land on empty) */
 		if (color[i + 10] == EMPTY) {
 			gen_push(i, i + 10, 16);
-			/* Can move 2 squares if both squares are empty or transparent */
-			if (i <= 19 && (color[i + 20] == EMPTY) &&
-			    (color[i + 10] == EMPTY || transparent[i + 10]))
+			/* Can move 2 squares if destination is also empty */
+			if (i <= 19 && color[i + 20] == EMPTY)
 				gen_push(i, i + 20, 24);
 		}
 		else if (transparent[i + 10] && color[i + 10] != EMPTY) {
