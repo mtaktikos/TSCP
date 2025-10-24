@@ -283,9 +283,17 @@ void genPawn(int i)
 			gen_push(i, i - 11, 17);
 		if (COL(i) != 9 && color[i - 9] == DARK)
 			gen_push(i, i - 9, 17);
-		if (color[i - 10] == EMPTY || transparent[i - 10]) {
+		/* Pawns can move forward if square is empty or transparent (but can only land on empty) */
+		if (color[i - 10] == EMPTY) {
 			gen_push(i, i - 10, 16);
-			if (i >= 60 && (color[i - 20] == EMPTY || transparent[i - 20]))
+			/* Can move 2 squares if both squares are empty or transparent */
+			if (i >= 60 && (color[i - 20] == EMPTY) && 
+			    (color[i - 10] == EMPTY || transparent[i - 10]))
+				gen_push(i, i - 20, 24);
+		}
+		else if (transparent[i - 10] && color[i - 10] != EMPTY) {
+			/* Can move through transparent square if moving 2 squares and destination is empty */
+			if (i >= 60 && color[i - 20] == EMPTY)
 				gen_push(i, i - 20, 24);
 		}
 	}
@@ -294,9 +302,17 @@ void genPawn(int i)
 			gen_push(i, i + 9, 17);
 		if (COL(i) != 9 && color[i + 11] == LIGHT)
 			gen_push(i, i + 11, 17);
-		if (color[i + 10] == EMPTY || transparent[i + 10]) {
+		/* Pawns can move forward if square is empty or transparent (but can only land on empty) */
+		if (color[i + 10] == EMPTY) {
 			gen_push(i, i + 10, 16);
-			if (i <= 19 && (color[i + 20] == EMPTY || transparent[i + 20]))
+			/* Can move 2 squares if both squares are empty or transparent */
+			if (i <= 19 && (color[i + 20] == EMPTY) &&
+			    (color[i + 10] == EMPTY || transparent[i + 10]))
+				gen_push(i, i + 20, 24);
+		}
+		else if (transparent[i + 10] && color[i + 10] != EMPTY) {
+			/* Can move through transparent square if moving 2 squares and destination is empty */
+			if (i <= 19 && color[i + 20] == EMPTY)
 				gen_push(i, i + 20, 24);
 		}
 	}
@@ -337,9 +353,12 @@ void genPiece(int i)
 				}
 				else if (transparent[n]) {
 					/* Can slide through side-appropriate transparent squares */
+					/* Can capture opponent pieces on transparent squares */
+					if (color[n] == xside)
+						gen_push(i, n, 1);
+					/* Cannot land on own pieces, but can continue sliding through */
 					if (!slide[piece[i]])
 						break;
-					/* Continue sliding through transparent squares */
 				}
 				else {
 					/* Non-transparent occupied square */
