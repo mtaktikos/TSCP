@@ -93,6 +93,41 @@ void set_hash()
 }
 
 
+/* set_transparent() marks own W pieces and adjacent squares as transparent */
+void set_transparent()
+{
+	int i, j, n;
+	
+	/* Clear all transparent flags first */
+	for (i = 0; i < 80; ++i)
+		transparent[i] = FALSE;
+	
+	/* Mark own AMAZON pieces and adjacent squares as transparent */
+	for (i = 0; i < 80; ++i) {
+		if (color[i] == side && piece[i] == AMAZON) {
+			transparent[i] = TRUE;
+			
+			/* Mark all 8 adjacent squares as transparent */
+			int adjacent_offsets[8] = { -13, -12, -11, -1, 1, 11, 12, 13 };
+			for (j = 0; j < 8; ++j) {
+				n = mailbox[mailbox64[i] + adjacent_offsets[j]];
+				if (n != -1)
+					transparent[n] = TRUE;
+			}
+		}
+	}
+}
+
+
+/* clear_transparent() clears all transparent flags */
+void clear_transparent()
+{
+	int i;
+	for (i = 0; i < 80; ++i)
+		transparent[i] = FALSE;
+}
+
+
 /* in_check() returns TRUE if side s is in check and FALSE
    otherwise. It just scans the board to find side s's king
    and calls attack() to see if it's being attacked. */
@@ -134,7 +169,7 @@ BOOL attack(int sq, int s)
 			}
 			else if (piece[i] == AMAZON)
 			{
-				/* Amazon attacks like Queen + Knight */
+				/* Amazon attacks like Queen + Knight + Dabbaba + Alfil */
 				/* First check queen moves */
 				for (j = 0; j < offsets[piece[i]]; ++j)
 				{
@@ -144,8 +179,14 @@ BOOL attack(int sq, int s)
 							break;
 						if (n == sq)
 							return TRUE;
-						if (color[n] != EMPTY)
+						if (color[n] != EMPTY && !transparent[n])
 							break;
+						if (transparent[n] && color[n] != EMPTY) {
+							/* Can see through transparent pieces */
+							if (n == sq)
+								return TRUE;
+							/* Continue to see beyond transparent pieces */
+						}
 						if (!slide[piece[i]])
 							break;
 					}
@@ -154,6 +195,20 @@ BOOL attack(int sq, int s)
 				int knight_offsets[8] = { -25, -23, -14, -10, 10, 14, 23, 25 };
 				for (j = 0; j < 8; ++j) {
 					n = mailbox[mailbox64[i] + knight_offsets[j]];
+					if (n != -1 && n == sq)
+						return TRUE;
+				}
+				/* Check Dabbaba moves (2-square orthogonal jumps) */
+				int dabbaba_offsets[4] = { -24, -2, 2, 24 };
+				for (j = 0; j < 4; ++j) {
+					n = mailbox[mailbox64[i] + dabbaba_offsets[j]];
+					if (n != -1 && n == sq)
+						return TRUE;
+				}
+				/* Check Alfil moves (2-square diagonal jumps) */
+				int alfil_offsets[4] = { -26, -22, 22, 26 };
+				for (j = 0; j < 4; ++j) {
+					n = mailbox[mailbox64[i] + alfil_offsets[j]];
 					if (n != -1 && n == sq)
 						return TRUE;
 				}
@@ -168,8 +223,14 @@ BOOL attack(int sq, int s)
 							break;
 						if (n == sq)
 							return TRUE;
-						if (color[n] != EMPTY)
+						if (color[n] != EMPTY && !transparent[n])
 							break;
+						if (transparent[n] && color[n] != EMPTY) {
+							/* Can see through transparent pieces */
+							if (n == sq)
+								return TRUE;
+							/* Continue to see beyond transparent pieces */
+						}
 						if (!slide[piece[i]])
 							break;
 					}
@@ -185,15 +246,15 @@ void genCastles()
 {
 	if (side == LIGHT) {
 		if (castle & 1)
-			gen_push(F1, H1, 2);  /* kingside: F1 to H1 */
+			gen_push(F1, I1, 2);  /* kingside: F1 to I1 */
 		if (castle & 2)
-			gen_push(F1, D1, 2);  /* queenside: F1 to D1 */
+			gen_push(F1, C1, 2);  /* queenside: F1 to C1 */
 	}
 	else {
 		if (castle & 4)
-			gen_push(F8, H8, 2);  /* kingside: F8 to H8 */
+			gen_push(F8, H8, 2);  /* queenside: F8 to H8 */
 		if (castle & 8)
-			gen_push(F8, D8, 2);  /* queenside: F8 to D8 */
+			gen_push(F8, B8, 2);  /* kingside: F8 to B8 */
 	}
 }
 
@@ -222,9 +283,9 @@ void genPawn(int i)
 			gen_push(i, i - 11, 17);
 		if (COL(i) != 9 && color[i - 9] == DARK)
 			gen_push(i, i - 9, 17);
-		if (color[i - 10] == EMPTY) {
+		if (color[i - 10] == EMPTY || transparent[i - 10]) {
 			gen_push(i, i - 10, 16);
-			if (i >= 60 && color[i - 20] == EMPTY)
+			if (i >= 60 && (color[i - 20] == EMPTY || transparent[i - 20]))
 				gen_push(i, i - 20, 24);
 		}
 	}
@@ -233,9 +294,9 @@ void genPawn(int i)
 			gen_push(i, i + 9, 17);
 		if (COL(i) != 9 && color[i + 11] == LIGHT)
 			gen_push(i, i + 11, 17);
-		if (color[i + 10] == EMPTY) {
+		if (color[i + 10] == EMPTY || transparent[i + 10]) {
 			gen_push(i, i + 10, 16);
-			if (i <= 19 && color[i + 20] == EMPTY)
+			if (i <= 19 && (color[i + 20] == EMPTY || transparent[i + 20]))
 				gen_push(i, i + 20, 24);
 		}
 	}
@@ -253,9 +314,12 @@ void genPiece(int i)
 			n = mailbox[mailbox64[n] + offset[piece[i]][j]];
 			if (n == -1)
 				break;
-			if (color[n] == EMPTY) {
+			if (color[n] == EMPTY || transparent[n]) {
 				gen_push(i, n, 0);
 				if (!slide[piece[i]])
+					break;
+				/* For sliding pieces, stop at transparent squares that have pieces */
+				if (transparent[n] && color[n] != EMPTY)
 					break;
 			}
 			else {
@@ -271,7 +335,25 @@ void genPiece(int i)
 		int knight_offsets[8] = { -25, -23, -14, -10, 10, 14, 23, 25 };
 		for (int j = 0; j < 8; ++j) {
 			int n = mailbox[mailbox64[i] + knight_offsets[j]];
-			if (n != -1 && color[n] == EMPTY) {
+			if (n != -1 && (color[n] == EMPTY || transparent[n])) {
+				gen_push(i, n, 0);
+			}
+		}
+		
+		/* Add Dabbaba moves (2-square orthogonal jumps) */
+		int dabbaba_offsets[4] = { -24, -2, 2, 24 };  /* 2 rows up/down, 2 cols left/right */
+		for (int j = 0; j < 4; ++j) {
+			int n = mailbox[mailbox64[i] + dabbaba_offsets[j]];
+			if (n != -1 && (color[n] == EMPTY || transparent[n])) {
+				gen_push(i, n, 0);
+			}
+		}
+		
+		/* Add Alfil moves (2-square diagonal jumps) */
+		int alfil_offsets[4] = { -26, -22, 22, 26 };  /* 2 squares diagonally */
+		for (int j = 0; j < 4; ++j) {
+			int n = mailbox[mailbox64[i] + alfil_offsets[j]];
+			if (n != -1 && (color[n] == EMPTY || transparent[n])) {
 				gen_push(i, n, 0);
 			}
 		}
@@ -312,6 +394,9 @@ void genMoves()
 
 void gen()
 {
+	/* Set transparent flags for own W pieces and adjacent squares */
+	set_transparent();
+	
 	/* so far, we have no moves for the current ply */
 	first_move[ply + 1] = first_move[ply];
 	genMoves();
@@ -332,6 +417,9 @@ void gen_caps()
 {
 	int i, j, n;
 
+	/* Set transparent flags for own W pieces and adjacent squares */
+	set_transparent();
+	
 	first_move[ply + 1] = first_move[ply];
 	for (i = 0; i < 80; ++i)
 		if (color[i] == side) {
@@ -373,6 +461,8 @@ void gen_caps()
 						/* Don't generate in gen_caps since Amazon cannot capture */
 					}
 				}
+				/* Dabbaba and Alfil moves for Amazon (non-capture only) */
+				/* No need to generate in gen_caps since Amazon cannot capture */
 			}
 			else
 				for (j = 0; j < offsets[piece[i]]; ++j)
@@ -380,10 +470,16 @@ void gen_caps()
 						n = mailbox[mailbox64[n] + offset[piece[i]][j]];
 						if (n == -1)
 							break;
-						if (color[n] != EMPTY) {
+						if (color[n] != EMPTY && !transparent[n]) {
 							if (color[n] == xside)
 								gen_push(i, n, 1);
 							break;
+						}
+						if (transparent[n] && color[n] != EMPTY) {
+							/* Can move through transparent squares */
+							if (color[n] == xside)
+								gen_push(i, n, 1);
+							/* Continue sliding through transparent squares */
 						}
 						if (!slide[piece[i]])
 							break;
@@ -479,33 +575,33 @@ BOOL makemove(move_bytes m)
 		if (in_check(side))
 			return FALSE;
 		switch (m.to) {
-		case 77:  /* H1 - white kingside: King f1->h1, Rook j1->g1 */
-			if (color[G1] != EMPTY || color[H1] != EMPTY ||
-				attack(G1, xside) || attack(H1, xside))
+		case 78:  /* I1 - white kingside: King f1->i1, Rook j1->h1 */
+			if (color[G1] != EMPTY || color[H1] != EMPTY || color[I1] != EMPTY ||
+				attack(G1, xside) || attack(H1, xside) || attack(I1, xside))
 				return FALSE;
 			from = J1;
-			to = G1;
+			to = H1;
 			break;
-		case 73:  /* D1 - white queenside: King f1->d1, Rook a1->e1 */
+		case 72:  /* C1 - white queenside: King f1->c1, Rook a1->d1 */
 			if (color[B1] != EMPTY || color[C1] != EMPTY || color[D1] != EMPTY || color[E1] != EMPTY ||
-				attack(D1, xside) || attack(E1, xside))
+				attack(C1, xside) || attack(D1, xside) || attack(E1, xside))
 				return FALSE;
 			from = A1;
-			to = E1;
+			to = D1;
 			break;
-		case 7:  /* H8 - black kingside: King f8->h8, Rook j8->g8 */
-			if (color[G8] != EMPTY || color[H8] != EMPTY ||
-				attack(G8, xside) || attack(H8, xside))
+		case 7:  /* H8 - black queenside: King f8->h8, Rook j8->i8 */
+			if (color[G8] != EMPTY || color[H8] != EMPTY || color[I8] != EMPTY ||
+				attack(G8, xside) || attack(H8, xside) || attack(I8, xside))
 				return FALSE;
 			from = J8;
-			to = G8;
+			to = I8;
 			break;
-		case 3:  /* D8 - black queenside: King f8->d8, Rook a8->e8 */
+		case 1:  /* B8 - black kingside: King f8->b8, Rook a8->c8 */
 			if (color[B8] != EMPTY || color[C8] != EMPTY || color[D8] != EMPTY || color[E8] != EMPTY ||
-				attack(D8, xside) || attack(E8, xside))
+				attack(B8, xside) || attack(C8, xside) || attack(D8, xside))
 				return FALSE;
 			from = A8;
-			to = E8;
+			to = C8;
 			break;
 		default:  /* shouldn't get here */
 			from = -1;
@@ -611,20 +707,20 @@ void takeback()
 		int from, to;
 
 		switch (m.to) {
-		case 77:  /* H1 - white kingside */
-			from = G1;
+		case 78:  /* I1 - white kingside */
+			from = H1;
 			to = J1;
 			break;
-		case 73:  /* D1 - white queenside */
-			from = E1;
+		case 72:  /* C1 - white queenside */
+			from = D1;
 			to = A1;
 			break;
-		case 7:  /* H8 - black kingside */
-			from = G8;
+		case 7:  /* H8 - black queenside */
+			from = I8;
 			to = J8;
 			break;
-		case 3:  /* D8 - black queenside */
-			from = E8;
+		case 1:  /* B8 - black kingside */
+			from = C8;
 			to = A8;
 			break;
 		default:  /* shouldn't get here */
