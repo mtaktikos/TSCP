@@ -179,14 +179,10 @@ BOOL attack(int sq, int s)
 							break;
 						if (n == sq)
 							return TRUE;
+						/* Stop at non-transparent occupied squares */
 						if (color[n] != EMPTY && !transparent[n])
 							break;
-						if (transparent[n] && color[n] != EMPTY) {
-							/* Can see through transparent pieces */
-							if (n == sq)
-								return TRUE;
-							/* Continue to see beyond transparent pieces */
-						}
+						/* Continue through transparent occupied squares */
 						if (!slide[piece[i]])
 							break;
 					}
@@ -223,14 +219,10 @@ BOOL attack(int sq, int s)
 							break;
 						if (n == sq)
 							return TRUE;
+						/* Stop at non-transparent occupied squares */
 						if (color[n] != EMPTY && !transparent[n])
 							break;
-						if (transparent[n] && color[n] != EMPTY) {
-							/* Can see through transparent pieces */
-							if (n == sq)
-								return TRUE;
-							/* Continue to see beyond transparent pieces */
-						}
+						/* Continue through transparent occupied squares */
 						if (!slide[piece[i]])
 							break;
 					}
@@ -246,15 +238,15 @@ void genCastles()
 {
 	if (side == LIGHT) {
 		if (castle & 1)
-			gen_push(F1, I1, 2);  /* kingside: F1 to I1 */
+			gen_push(F1, I1, 2);  /* white kingside: F1 to I1 */
 		if (castle & 2)
-			gen_push(F1, C1, 2);  /* queenside: F1 to C1 */
+			gen_push(F1, C1, 2);  /* white queenside: F1 to C1 */
 	}
 	else {
 		if (castle & 4)
-			gen_push(F8, H8, 2);  /* queenside: F8 to H8 */
+			gen_push(F8, H8, 2);  /* black queenside: F8 to H8 */
 		if (castle & 8)
-			gen_push(F8, B8, 2);  /* kingside: F8 to B8 */
+			gen_push(F8, B8, 2);  /* black kingside: F8 to B8 */
 	}
 }
 
@@ -442,27 +434,8 @@ void gen_caps()
 				}
 			}
 			else if (piece[i] == AMAZON) {
-				/* Amazon cannot capture, so only generate non-capture moves */
-				for (j = 0; j < offsets[piece[i]]; ++j)
-					for (n = i;;) {
-						n = mailbox[mailbox64[n] + offset[piece[i]][j]];
-						if (n == -1)
-							break;
-						if (color[n] != EMPTY)
-							break;
-						if (!slide[piece[i]])
-							break;
-					}
-				/* Knight moves for Amazon (non-capture only) */
-				int knight_offsets[8] = { -25, -23, -14, -10, 10, 14, 23, 25 };
-				for (j = 0; j < 8; ++j) {
-					n = mailbox[mailbox64[i] + knight_offsets[j]];
-					if (n != -1 && color[n] == EMPTY) {
-						/* Don't generate in gen_caps since Amazon cannot capture */
-					}
-				}
-				/* Dabbaba and Alfil moves for Amazon (non-capture only) */
-				/* No need to generate in gen_caps since Amazon cannot capture */
+				/* Amazon cannot capture, so no moves are generated in gen_caps() */
+				/* This is intentional - gen_caps() only generates capturing moves */
 			}
 			else
 				for (j = 0; j < offsets[piece[i]]; ++j)
@@ -575,28 +548,28 @@ BOOL makemove(move_bytes m)
 		if (in_check(side))
 			return FALSE;
 		switch (m.to) {
-		case 78:  /* I1 - white kingside: King f1->i1, Rook j1->h1 */
+		case 78:  /* I1 - white kingside castle: King f1->i1, Rook j1->h1 */
 			if (color[G1] != EMPTY || color[H1] != EMPTY || color[I1] != EMPTY ||
 				attack(G1, xside) || attack(H1, xside) || attack(I1, xside))
 				return FALSE;
 			from = J1;
 			to = H1;
 			break;
-		case 72:  /* C1 - white queenside: King f1->c1, Rook a1->d1 */
+		case 72:  /* C1 - white queenside castle: King f1->c1, Rook a1->d1 */
 			if (color[B1] != EMPTY || color[C1] != EMPTY || color[D1] != EMPTY || color[E1] != EMPTY ||
 				attack(C1, xside) || attack(D1, xside) || attack(E1, xside))
 				return FALSE;
 			from = A1;
 			to = D1;
 			break;
-		case 7:  /* H8 - black queenside: King f8->h8, Rook j8->i8 */
+		case 7:  /* H8 - black queenside castle: King f8->h8, Rook j8->i8 */
 			if (color[G8] != EMPTY || color[H8] != EMPTY || color[I8] != EMPTY ||
 				attack(G8, xside) || attack(H8, xside) || attack(I8, xside))
 				return FALSE;
 			from = J8;
 			to = I8;
 			break;
-		case 1:  /* B8 - black kingside: King f8->b8, Rook a8->c8 */
+		case 1:  /* B8 - black kingside castle: King f8->b8, Rook a8->c8 */
 			if (color[B8] != EMPTY || color[C8] != EMPTY || color[D8] != EMPTY || color[E8] != EMPTY ||
 				attack(B8, xside) || attack(C8, xside) || attack(D8, xside))
 				return FALSE;
@@ -707,19 +680,19 @@ void takeback()
 		int from, to;
 
 		switch (m.to) {
-		case 78:  /* I1 - white kingside */
+		case 78:  /* I1 - white kingside castle */
 			from = H1;
 			to = J1;
 			break;
-		case 72:  /* C1 - white queenside */
+		case 72:  /* C1 - white queenside castle */
 			from = D1;
 			to = A1;
 			break;
-		case 7:  /* H8 - black queenside */
+		case 7:  /* H8 - black queenside castle */
 			from = I8;
 			to = J8;
 			break;
-		case 1:  /* B8 - black kingside */
+		case 1:  /* B8 - black kingside castle */
 			from = C8;
 			to = A8;
 			break;
