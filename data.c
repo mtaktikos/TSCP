@@ -195,6 +195,8 @@ int init_piece[80] = {
 	3, 7, 1, 2, 4, 5, 2, 1, 6, 3   /* rank 1: R W N B Q K B N G R */
 };
 
-/* transparent array marks squares that are temporarily transparent 
-   (own W pieces and adjacent squares) */
-BOOL transparent[80];
+/* transparent arrays mark squares that are transparent for each side
+   white_transparent: squares with white W piece or adjacent to white W piece
+   black_transparent: squares with black W piece or adjacent to black W piece */
+BOOL white_transparent[80];
+BOOL black_transparent[80];
