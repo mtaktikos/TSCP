@@ -15,6 +15,7 @@ int hash_rand();
 void set_hash();
 BOOL in_check(int s);
 BOOL attack(int sq, int s);
+BOOL is_transparent(int sq, int s);
 void gen();
 void gen_caps();
 void gen_push(int from, int to, int bits);

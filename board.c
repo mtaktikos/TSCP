@@ -108,6 +108,30 @@ BOOL in_check(int s)
 }
 
 
+/* is_transparent() returns TRUE if square sq is transparent for side s.
+   A square is transparent if it has a friendly Amazon (W) on it, or if
+   there's a friendly Amazon adjacent to it (8 directions). */
+
+BOOL is_transparent(int sq, int s)
+{
+	int i, j;
+	
+	/* Check if the square itself has a friendly Amazon */
+	if (color[sq] == s && piece[sq] == AMAZON)
+		return TRUE;
+	
+	/* Check all 8 adjacent squares for a friendly Amazon */
+	int adjacent_offsets[8] = { -13, -12, -11, -1, 1, 11, 12, 13 };
+	for (i = 0; i < 8; ++i) {
+		int n = mailbox[mailbox64[sq] + adjacent_offsets[i]];
+		if (n != -1 && color[n] == s && piece[n] == AMAZON)
+			return TRUE;
+	}
+	
+	return FALSE;
+}
+
+
 /* attack() returns TRUE if square sq is being attacked by side
    s and FALSE otherwise. */
 
@@ -202,8 +226,15 @@ void genPawn(int i)
 			gen_push(i, i - 9, 17);
 		if (color[i - 10] == EMPTY) {
 			gen_push(i, i - 10, 16);
-			if (i >= 60 && color[i - 20] == EMPTY)
+			/* Allow double move if: on 2nd rank AND (target square is empty AND 
+			   (intermediate square is empty OR intermediate square is transparent)) */
+			if (i >= 60 && color[i - 20] == EMPTY && 
+			    (color[i - 10] == EMPTY || is_transparent(i - 10, side)))
 				gen_push(i, i - 20, 24);
+		}
+		/* Also allow double move if intermediate square is transparent and occupied */
+		else if (i >= 60 && is_transparent(i - 10, side) && color[i - 20] == EMPTY) {
+			gen_push(i, i - 20, 24);
 		}
 	}
 	else {
@@ -213,8 +244,15 @@ void genPawn(int i)
 			gen_push(i, i + 11, 17);
 		if (color[i + 10] == EMPTY) {
 			gen_push(i, i + 10, 16);
-			if (i <= 19 && color[i + 20] == EMPTY)
+			/* Allow double move if: on 7th rank AND (target square is empty AND 
+			   (intermediate square is empty OR intermediate square is transparent)) */
+			if (i <= 19 && color[i + 20] == EMPTY && 
+			    (color[i + 10] == EMPTY || is_transparent(i + 10, side)))
 				gen_push(i, i + 20, 24);
+		}
+		/* Also allow double move if intermediate square is transparent and occupied */
+		else if (i <= 19 && is_transparent(i + 10, side) && color[i + 20] == EMPTY) {
+			gen_push(i, i + 20, 24);
 		}
 	}
 }
@@ -237,9 +275,23 @@ void genPiece(int i)
 					break;
 			}
 			else {
-				if (color[n] == xside && !is_amazon)  /* Amazon cannot capture */
-					gen_push(i, n, 1);
-				break;
+				/* Check if it's a friendly piece */
+				if (color[n] == side) {
+					/* For slider pieces (not Amazon), check if we can pass through transparent squares */
+					if (slide[piece[i]] && !is_amazon && is_transparent(n, side)) {
+						/* Can pass through transparent square, continue sliding */
+					}
+					else {
+						/* Cannot move here - blocked by friendly piece */
+						break;
+					}
+				}
+				else {
+					/* Enemy piece */
+					if (!is_amazon)  /* Amazon cannot capture */
+						gen_push(i, n, 1);
+					break;
+				}
 			}
 		}
 	}
@@ -362,7 +414,13 @@ void gen_caps()
 						if (color[n] != EMPTY) {
 							if (color[n] == xside)
 								gen_push(i, n, 1);
-							break;
+							else if (slide[piece[i]] && is_transparent(n, side)) {
+								/* Can pass through transparent square */
+							}
+							else
+								break;
+							if (color[n] == xside)
+								break;
 						}
 						if (!slide[piece[i]])
 							break;
