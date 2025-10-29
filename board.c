@@ -134,43 +134,7 @@ BOOL attack(int sq, int s)
 			}
 			else if (piece[i] == AMAZON)
 			{
-				/* Amazon attacks like Queen + Knight + Dabbaba + Alfil */
-				/* First check queen moves */
-				for (j = 0; j < offsets[piece[i]]; ++j)
-				{
-					for (n = i;;) {
-						n = mailbox[mailbox64[n] + offset[piece[i]][j]];
-						if (n == -1)
-							break;
-						if (n == sq)
-							return TRUE;
-						if (color[n] != EMPTY)
-							break;
-						if (!slide[piece[i]])
-							break;
-					}
-				}
-				/* Then check knight moves */
-				int knight_offsets[8] = { -25, -23, -14, -10, 10, 14, 23, 25 };
-				for (j = 0; j < 8; ++j) {
-					n = mailbox[mailbox64[i] + knight_offsets[j]];
-					if (n != -1 && n == sq)
-						return TRUE;
-				}
-				/* Check Dabbaba moves (2-square orthogonal jumps) */
-				int dabbaba_offsets[4] = { -24, -2, 2, 24 };
-				for (j = 0; j < 4; ++j) {
-					n = mailbox[mailbox64[i] + dabbaba_offsets[j]];
-					if (n != -1 && n == sq)
-						return TRUE;
-				}
-				/* Check Alfil moves (2-square diagonal jumps) */
-				int alfil_offsets[4] = { -26, -22, 22, 26 };
-				for (j = 0; j < 4; ++j) {
-					n = mailbox[mailbox64[i] + alfil_offsets[j]];
-					if (n != -1 && n == sq)
-						return TRUE;
-				}
+				/* Amazon cannot capture, so it does not attack any square */
 			}
 			else
 			{
