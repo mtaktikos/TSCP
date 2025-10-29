@@ -43,5 +43,4 @@ extern int castle_mask[80];
 extern char piece_char[8];
 extern int init_color[80];
 extern int init_piece[80];
-extern BOOL white_transparent[80];
-extern BOOL black_transparent[80];
+extern BOOL transparent[80];
