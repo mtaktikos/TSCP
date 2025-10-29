@@ -226,13 +226,11 @@ void genPawn(int i)
 			gen_push(i, i - 9, 17);
 		if (color[i - 10] == EMPTY) {
 			gen_push(i, i - 10, 16);
-			/* Allow double move if: on 2nd rank AND (target square is empty AND 
-			   (intermediate square is empty OR intermediate square is transparent)) */
-			if (i >= 60 && color[i - 20] == EMPTY && 
-			    (color[i - 10] == EMPTY || is_transparent(i - 10, side)))
+			/* Standard double move when intermediate square is empty */
+			if (i >= 60 && color[i - 20] == EMPTY)
 				gen_push(i, i - 20, 24);
 		}
-		/* Also allow double move if intermediate square is transparent and occupied */
+		/* Allow double move through transparent square when intermediate is occupied */
 		else if (i >= 60 && is_transparent(i - 10, side) && color[i - 20] == EMPTY) {
 			gen_push(i, i - 20, 24);
 		}
@@ -244,13 +242,11 @@ void genPawn(int i)
 			gen_push(i, i + 11, 17);
 		if (color[i + 10] == EMPTY) {
 			gen_push(i, i + 10, 16);
-			/* Allow double move if: on 7th rank AND (target square is empty AND 
-			   (intermediate square is empty OR intermediate square is transparent)) */
-			if (i <= 19 && color[i + 20] == EMPTY && 
-			    (color[i + 10] == EMPTY || is_transparent(i + 10, side)))
+			/* Standard double move when intermediate square is empty */
+			if (i <= 19 && color[i + 20] == EMPTY)
 				gen_push(i, i + 20, 24);
 		}
-		/* Also allow double move if intermediate square is transparent and occupied */
+		/* Allow double move through transparent square when intermediate is occupied */
 		else if (i <= 19 && is_transparent(i + 10, side) && color[i + 20] == EMPTY) {
 			gen_push(i, i + 20, 24);
 		}
@@ -274,24 +270,22 @@ void genPiece(int i)
 				if (!slide[piece[i]])
 					break;
 			}
-			else {
-				/* Check if it's a friendly piece */
-				if (color[n] == side) {
-					/* For slider pieces (not Amazon), check if we can pass through transparent squares */
-					if (slide[piece[i]] && !is_amazon && is_transparent(n, side)) {
-						/* Can pass through transparent square, continue sliding */
-					}
-					else {
-						/* Cannot move here - blocked by friendly piece */
-						break;
-					}
+			else if (color[n] == side) {
+				/* For slider pieces (not Amazon), check if we can pass through transparent squares */
+				if (slide[piece[i]] && !is_amazon && is_transparent(n, side)) {
+					/* Can pass through transparent square, continue sliding */
+					continue;
 				}
 				else {
-					/* Enemy piece */
-					if (!is_amazon)  /* Amazon cannot capture */
-						gen_push(i, n, 1);
+					/* Cannot move here - blocked by friendly piece */
 					break;
 				}
+			}
+			else {
+				/* Enemy piece */
+				if (!is_amazon)  /* Amazon cannot capture */
+					gen_push(i, n, 1);
+				break;
 			}
 		}
 	}
@@ -412,15 +406,18 @@ void gen_caps()
 						if (n == -1)
 							break;
 						if (color[n] != EMPTY) {
-							if (color[n] == xside)
+							if (color[n] == xside) {
 								gen_push(i, n, 1);
-							else if (slide[piece[i]] && is_transparent(n, side)) {
-								/* Can pass through transparent square */
+								break;
 							}
-							else
+							else if (slide[piece[i]] && is_transparent(n, side)) {
+								/* Can pass through transparent square, continue */
+								continue;
+							}
+							else {
+								/* Blocked by friendly piece */
 								break;
-							if (color[n] == xside)
-								break;
+							}
 						}
 						if (!slide[piece[i]])
 							break;
