@@ -21,8 +21,6 @@ void gen_push(int from, int to, int bits);
 void gen_promote(int from, int to, int bits);
 BOOL makemove(move_bytes m);
 void takeback();
-void set_transparent();
-void clear_transparent();
 
 /* book.c */
 void open_book();

@@ -93,41 +93,6 @@ void set_hash()
 }
 
 
-/* set_transparent() marks own W pieces and adjacent squares as transparent */
-void set_transparent()
-{
-	int i, j, n;
-	
-	/* Clear all transparent flags first */
-	for (i = 0; i < 80; ++i)
-		transparent[i] = FALSE;
-	
-	/* Mark own AMAZON pieces and adjacent squares as transparent */
-	for (i = 0; i < 80; ++i) {
-		if (color[i] == side && piece[i] == AMAZON) {
-			transparent[i] = TRUE;
-			
-			/* Mark all 8 adjacent squares as transparent */
-			int adjacent_offsets[8] = { -13, -12, -11, -1, 1, 11, 12, 13 };
-			for (j = 0; j < 8; ++j) {
-				n = mailbox[mailbox64[i] + adjacent_offsets[j]];
-				if (n != -1)
-					transparent[n] = TRUE;
-			}
-		}
-	}
-}
-
-
-/* clear_transparent() clears all transparent flags */
-void clear_transparent()
-{
-	int i;
-	for (i = 0; i < 80; ++i)
-		transparent[i] = FALSE;
-}
-
-
 /* in_check() returns TRUE if side s is in check and FALSE
    otherwise. It just scans the board to find side s's king
    and calls attack() to see if it's being attacked. */
@@ -179,10 +144,8 @@ BOOL attack(int sq, int s)
 							break;
 						if (n == sq)
 							return TRUE;
-						/* Stop at non-transparent occupied squares */
-						if (color[n] != EMPTY && !transparent[n])
+						if (color[n] != EMPTY)
 							break;
-						/* Continue through transparent occupied squares */
 						if (!slide[piece[i]])
 							break;
 					}
@@ -219,10 +182,8 @@ BOOL attack(int sq, int s)
 							break;
 						if (n == sq)
 							return TRUE;
-						/* Stop at non-transparent occupied squares */
-						if (color[n] != EMPTY && !transparent[n])
+						if (color[n] != EMPTY)
 							break;
-						/* Continue through transparent occupied squares */
 						if (!slide[piece[i]])
 							break;
 					}
@@ -275,9 +236,9 @@ void genPawn(int i)
 			gen_push(i, i - 11, 17);
 		if (COL(i) != 9 && color[i - 9] == DARK)
 			gen_push(i, i - 9, 17);
-		if (color[i - 10] == EMPTY || transparent[i - 10]) {
+		if (color[i - 10] == EMPTY) {
 			gen_push(i, i - 10, 16);
-			if (i >= 60 && (color[i - 20] == EMPTY || transparent[i - 20]))
+			if (i >= 60 && color[i - 20] == EMPTY)
 				gen_push(i, i - 20, 24);
 		}
 	}
@@ -286,9 +247,9 @@ void genPawn(int i)
 			gen_push(i, i + 9, 17);
 		if (COL(i) != 9 && color[i + 11] == LIGHT)
 			gen_push(i, i + 11, 17);
-		if (color[i + 10] == EMPTY || transparent[i + 10]) {
+		if (color[i + 10] == EMPTY) {
 			gen_push(i, i + 10, 16);
-			if (i <= 19 && (color[i + 20] == EMPTY || transparent[i + 20]))
+			if (i <= 19 && color[i + 20] == EMPTY)
 				gen_push(i, i + 20, 24);
 		}
 	}
@@ -306,12 +267,9 @@ void genPiece(int i)
 			n = mailbox[mailbox64[n] + offset[piece[i]][j]];
 			if (n == -1)
 				break;
-			if (color[n] == EMPTY || transparent[n]) {
+			if (color[n] == EMPTY) {
 				gen_push(i, n, 0);
 				if (!slide[piece[i]])
-					break;
-				/* For sliding pieces, stop at transparent squares that have pieces */
-				if (transparent[n] && color[n] != EMPTY)
 					break;
 			}
 			else {
@@ -327,7 +285,7 @@ void genPiece(int i)
 		int knight_offsets[8] = { -25, -23, -14, -10, 10, 14, 23, 25 };
 		for (int j = 0; j < 8; ++j) {
 			int n = mailbox[mailbox64[i] + knight_offsets[j]];
-			if (n != -1 && (color[n] == EMPTY || transparent[n])) {
+			if (n != -1 && color[n] == EMPTY) {
 				gen_push(i, n, 0);
 			}
 		}
@@ -336,7 +294,7 @@ void genPiece(int i)
 		int dabbaba_offsets[4] = { -24, -2, 2, 24 };  /* 2 rows up/down, 2 cols left/right */
 		for (int j = 0; j < 4; ++j) {
 			int n = mailbox[mailbox64[i] + dabbaba_offsets[j]];
-			if (n != -1 && (color[n] == EMPTY || transparent[n])) {
+			if (n != -1 && color[n] == EMPTY) {
 				gen_push(i, n, 0);
 			}
 		}
@@ -345,7 +303,7 @@ void genPiece(int i)
 		int alfil_offsets[4] = { -26, -22, 22, 26 };  /* 2 squares diagonally */
 		for (int j = 0; j < 4; ++j) {
 			int n = mailbox[mailbox64[i] + alfil_offsets[j]];
-			if (n != -1 && (color[n] == EMPTY || transparent[n])) {
+			if (n != -1 && color[n] == EMPTY) {
 				gen_push(i, n, 0);
 			}
 		}
@@ -386,9 +344,6 @@ void genMoves()
 
 void gen()
 {
-	/* Set transparent flags for own W pieces and adjacent squares */
-	set_transparent();
-	
 	/* so far, we have no moves for the current ply */
 	first_move[ply + 1] = first_move[ply];
 	genMoves();
@@ -409,9 +364,6 @@ void gen_caps()
 {
 	int i, j, n;
 
-	/* Set transparent flags for own W pieces and adjacent squares */
-	set_transparent();
-	
 	first_move[ply + 1] = first_move[ply];
 	for (i = 0; i < 80; ++i)
 		if (color[i] == side) {
@@ -443,16 +395,10 @@ void gen_caps()
 						n = mailbox[mailbox64[n] + offset[piece[i]][j]];
 						if (n == -1)
 							break;
-						if (color[n] != EMPTY && !transparent[n]) {
+						if (color[n] != EMPTY) {
 							if (color[n] == xside)
 								gen_push(i, n, 1);
 							break;
-						}
-						if (transparent[n] && color[n] != EMPTY) {
-							/* Can move through transparent squares */
-							if (color[n] == xside)
-								gen_push(i, n, 1);
-							/* Continue sliding through transparent squares */
 						}
 						if (!slide[piece[i]])
 							break;
