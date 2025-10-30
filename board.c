@@ -171,13 +171,16 @@ BOOL attack(int sq, int s)
 						if (n == sq)
 							return TRUE;
 						if (color[n] != EMPTY) {
-							/* For sliding pieces, check if we can pass through transparent squares */
+							/* Enemy piece blocks the attack */
+							if (color[n] != s)
+								break;
+							/* For sliding pieces, check if we can pass through transparent friendly pieces */
 							if (slide[piece[i]] && is_transparent(n, s)) {
 								/* Can pass through transparent square, continue */
 								continue;
 							}
 							else {
-								/* Blocked by non-transparent piece */
+								/* Blocked by non-transparent friendly piece */
 								break;
 							}
 						}
