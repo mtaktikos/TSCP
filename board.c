@@ -296,8 +296,11 @@ void genPiece(int i)
 			else {
 				/* Enemy piece */
 				if (!is_amazon)  /* Amazon cannot capture */
-					gen_push(i, n, 1);
-				/* For slider pieces (not Amazon), check if we can pass through transparent squares */
+					gen_push(i, n, 1);  /* Generate capture move for this square */
+				/* For slider pieces (not Amazon), check if we can pass through transparent squares.
+				   Note: We generate BOTH the capture move above AND allow passing through.
+				   This gives the player the option to either capture the enemy piece on the
+				   transparent square OR pass through it to reach squares beyond. */
 				if (slide[piece[i]] && !is_amazon && is_transparent(n, side)) {
 					/* Can pass through transparent square with enemy piece, continue sliding */
 					continue;
@@ -424,8 +427,11 @@ void gen_caps()
 							break;
 						if (color[n] != EMPTY) {
 							if (color[n] == xside) {
-								gen_push(i, n, 1);
-								/* For slider pieces, check if we can pass through transparent squares */
+								gen_push(i, n, 1);  /* Generate capture move for this square */
+								/* For slider pieces, check if we can pass through transparent squares.
+								   Note: We generate BOTH the capture move above AND allow passing through.
+								   This gives the player the option to either capture the enemy piece on the
+								   transparent square OR pass through it to reach squares beyond. */
 								if (slide[piece[i]] && is_transparent(n, side)) {
 									/* Can pass through transparent square with enemy piece, continue */
 									continue;
