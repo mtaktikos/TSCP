@@ -297,6 +297,11 @@ void genPiece(int i)
 				/* Enemy piece */
 				if (!is_amazon)  /* Amazon cannot capture */
 					gen_push(i, n, 1);
+				/* For slider pieces (not Amazon), check if we can pass through transparent squares */
+				if (slide[piece[i]] && !is_amazon && is_transparent(n, side)) {
+					/* Can pass through transparent square with enemy piece, continue sliding */
+					continue;
+				}
 				break;
 			}
 		}
@@ -420,6 +425,11 @@ void gen_caps()
 						if (color[n] != EMPTY) {
 							if (color[n] == xside) {
 								gen_push(i, n, 1);
+								/* For slider pieces, check if we can pass through transparent squares */
+								if (slide[piece[i]] && is_transparent(n, side)) {
+									/* Can pass through transparent square with enemy piece, continue */
+									continue;
+								}
 								break;
 							}
 							else if (slide[piece[i]] && is_transparent(n, side)) {
