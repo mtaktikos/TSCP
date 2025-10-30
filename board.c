@@ -30,6 +30,7 @@ void init_board()
 	ply = 0;
 	hply = 0;
 	set_hash();  /* init_hash() must be called before this function */
+	compute_transparent_squares();  /* compute transparent squares based on initial position */
 	first_move[0] = 0;
 }
 
@@ -295,10 +296,7 @@ void genPiece(int i)
 					break;
 				}
 			}
-			else {
-				/* Should not reach here */
-				break;
-			}
+			/* Note: All color cases (EMPTY, xside, side) are handled above */
 		}
 	}
 	
@@ -366,9 +364,6 @@ void genMoves()
 
 void gen()
 {
-	/* Compute transparent squares based on AMAZON positions */
-	compute_transparent_squares();
-	
 	/* so far, we have no moves for the current ply */
 	first_move[ply + 1] = first_move[ply];
 	genMoves();
@@ -388,9 +383,6 @@ void gen()
 void gen_caps()
 {
 	int i, j, n;
-
-	/* Compute transparent squares based on AMAZON positions */
-	compute_transparent_squares();
 
 	first_move[ply + 1] = first_move[ply];
 	for (i = 0; i < 80; ++i)
@@ -633,6 +625,7 @@ BOOL makemove(move_bytes m)
 		return FALSE;
 	}
 	set_hash();
+	compute_transparent_squares();  /* recompute transparent squares after move */
 	return TRUE;
 }
 
@@ -705,4 +698,5 @@ void takeback()
 			piece[m.to - 10] = PAWN;
 		}
 	}
+	compute_transparent_squares();  /* recompute transparent squares after undoing move */
 }
