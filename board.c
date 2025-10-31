@@ -30,6 +30,7 @@ void init_board()
 	ply = 0;
 	hply = 0;
 	set_hash();  /* init_hash() must be called before this function */
+	compute_transparent_squares();  /* compute transparent squares based on initial position */
 	first_move[0] = 0;
 }
 
@@ -159,6 +160,45 @@ BOOL attack(int sq, int s)
 }
 
 
+/* compute_transparent_squares() computes which squares are transparent for each side
+   based on AMAZON (W) piece positions. The square containing an AMAZON and the 8 adjacent
+   squares are transparent for that side's sliders. */
+
+void compute_transparent_squares()
+{
+	int i, j;
+	
+	/* Initialize all squares as non-transparent */
+	for (i = 0; i < 80; ++i) {
+		whitetransparent[i] = FALSE;
+		blacktransparent[i] = FALSE;
+	}
+	
+	/* Find AMAZONs and mark transparent squares */
+	for (i = 0; i < 80; ++i) {
+		if (piece[i] == AMAZON) {
+			/* The AMAZON's square itself is transparent */
+			if (color[i] == LIGHT)
+				whitetransparent[i] = TRUE;
+			else
+				blacktransparent[i] = TRUE;
+			
+			/* Mark the 8 adjacent squares as transparent */
+			int adjacent_offsets[8] = { -13, -12, -11, -1, 1, 11, 12, 13 };
+			for (j = 0; j < 8; ++j) {
+				int n = mailbox[mailbox64[i] + adjacent_offsets[j]];
+				if (n != -1) {
+					if (color[i] == LIGHT)
+						whitetransparent[n] = TRUE;
+					else
+						blacktransparent[n] = TRUE;
+				}
+			}
+		}
+	}
+}
+
+
 void genCastles()
 {
 	if (side == LIGHT) {
@@ -222,6 +262,7 @@ void genPawn(int i)
 void genPiece(int i)
 {
 	int is_amazon = (piece[i] == AMAZON);
+	BOOL is_slider = slide[piece[i]];
 	
 	/* Generate queen-like moves */
 	for (int j = 0; j < offsets[piece[i]]; ++j)
@@ -233,14 +274,29 @@ void genPiece(int i)
 				break;
 			if (color[n] == EMPTY) {
 				gen_push(i, n, 0);
-				if (!slide[piece[i]])
+				if (!is_slider)
 					break;
 			}
-			else {
-				if (color[n] == xside && !is_amazon)  /* Amazon cannot capture */
-					gen_push(i, n, 1);
+			else if (color[n] == xside && !is_amazon) {
+				/* Amazon cannot capture, other pieces can capture enemy pieces */
+				gen_push(i, n, 1);
 				break;
 			}
+			else if (color[n] == side) {
+				/* Hit a friendly piece */
+				/* For sliders, check if this square is transparent */
+				if (is_slider && 
+				    ((side == LIGHT && whitetransparent[n]) || 
+				     (side == DARK && blacktransparent[n]))) {
+					/* Can pass through transparent square, continue sliding */
+					continue;
+				}
+				else {
+					/* Cannot pass through or capture friendly piece */
+					break;
+				}
+			}
+			/* Note: All color cases (EMPTY, xside, side) are handled above */
 		}
 	}
 	
@@ -360,9 +416,24 @@ void gen_caps()
 						if (n == -1)
 							break;
 						if (color[n] != EMPTY) {
-							if (color[n] == xside)
+							if (color[n] == xside) {
 								gen_push(i, n, 1);
-							break;
+								break;
+							}
+							else {
+								/* Hit a friendly piece */
+								/* For sliders, check if this square is transparent */
+								if (slide[piece[i]] && 
+								    ((side == LIGHT && whitetransparent[n]) || 
+								     (side == DARK && blacktransparent[n]))) {
+									/* Can pass through transparent square, continue sliding */
+									continue;
+								}
+								else {
+									/* Cannot pass through friendly piece */
+									break;
+								}
+							}
 						}
 						if (!slide[piece[i]])
 							break;
@@ -554,6 +625,7 @@ BOOL makemove(move_bytes m)
 		return FALSE;
 	}
 	set_hash();
+	compute_transparent_squares();  /* recompute transparent squares after move */
 	return TRUE;
 }
 
@@ -626,4 +698,5 @@ void takeback()
 			piece[m.to - 10] = PAWN;
 		}
 	}
+	compute_transparent_squares();  /* recompute transparent squares after undoing move */
 }
