@@ -403,8 +403,10 @@ void xboard()
 }
 
 
-/* king_captured() checks if a King (Commoner K) has been captured.
-   Returns the side whose King was captured, or EMPTY if both Kings are present. */
+/* king_captured() checks if a King piece (internally KING type, displayed as 'K') 
+   has been captured. Note: These are the special Commoners that can castle and whose
+   capture ends the game. Returns the side whose King was captured, or EMPTY if both 
+   Kings are present. */
 
 int king_captured()
 {

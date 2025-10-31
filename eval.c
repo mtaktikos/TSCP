@@ -115,23 +115,13 @@ int eval()
 	int i;
 	int f;  /* file */
 	int score[2];  /* each side's score */
-	BOOL light_king_present = FALSE;
-	BOOL dark_king_present = FALSE;
+	int captured_king;
 
 	/* Check if a King has been captured - this ends the game */
-	for (i = 0; i < 80; ++i) {
-		if (piece[i] == KING) {
-			if (color[i] == LIGHT)
-				light_king_present = TRUE;
-			else if (color[i] == DARK)
-				dark_king_present = TRUE;
-		}
-	}
-	
-	/* If a King is missing, return a huge score for the winner */
-	if (!light_king_present)
+	captured_king = king_captured();
+	if (captured_king == LIGHT)
 		return (side == DARK) ? 20000 : -20000;  /* Light King captured, Dark wins */
-	if (!dark_king_present)
+	if (captured_king == DARK)
 		return (side == LIGHT) ? 20000 : -20000;  /* Dark King captured, Light wins */
 
 	/* this is the first pass: set up pawn_rank, piece_mat, and pawn_mat. */
