@@ -19,11 +19,12 @@
 #define ROOK_SEMI_OPEN_FILE_BONUS	10
 #define ROOK_OPEN_FILE_BONUS		15
 #define ROOK_ON_SEVENTH_BONUS		20
+#define KING_WIN_SCORE				20000  /* Score for winning by King capture */
 
 
 /* the values of the pieces */
 int piece_value[8] = {
-	100, 300, 380, 550, 980, 20000, 250, 450
+	100, 300, 380, 550, 980, KING_WIN_SCORE, 250, 450
 };
 
 /* The "pcsq" arrays are piece/square tables. They're values
@@ -120,9 +121,9 @@ int eval()
 	/* Check if a King has been captured - this ends the game */
 	captured_king = king_captured();
 	if (captured_king == LIGHT)
-		return (side == DARK) ? 20000 : -20000;  /* Light King captured, Dark wins */
+		return (side == DARK) ? KING_WIN_SCORE : -KING_WIN_SCORE;  /* Light King captured, Dark wins */
 	if (captured_king == DARK)
-		return (side == LIGHT) ? 20000 : -20000;  /* Dark King captured, Light wins */
+		return (side == LIGHT) ? KING_WIN_SCORE : -KING_WIN_SCORE;  /* Dark King captured, Light wins */
 
 	/* this is the first pass: set up pawn_rank, piece_mat, and pawn_mat. */
 	for (i = 0; i < 12; ++i) {

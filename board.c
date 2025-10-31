@@ -107,7 +107,7 @@ BOOL in_check(int s)
 	for (i = 0; i < 80; ++i)
 		if (piece[i] == KING && color[i] == s)
 			return attack(i, s ^ 1);
-	return TRUE;  /* shouldn't get here */
+	return FALSE;  /* King not found - should not happen in normal game */
 }
 
 
