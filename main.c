@@ -403,12 +403,52 @@ void xboard()
 }
 
 
+/* king_captured() checks if a King piece (internally KING type, displayed as 'K') 
+   has been captured. Note: These are the special Commoners that can castle and whose
+   capture ends the game. Returns the side whose King was captured, or EMPTY if both 
+   Kings are present. */
+
+int king_captured()
+{
+	BOOL light_king_present = FALSE;
+	BOOL dark_king_present = FALSE;
+	int i;
+
+	for (i = 0; i < 80; ++i) {
+		if (piece[i] == KING) {
+			if (color[i] == LIGHT)
+				light_king_present = TRUE;
+			else if (color[i] == DARK)
+				dark_king_present = TRUE;
+		}
+	}
+
+	if (!light_king_present)
+		return LIGHT;  /* Light King was captured */
+	if (!dark_king_present)
+		return DARK;   /* Dark King was captured */
+	return EMPTY;      /* Both Kings still on board */
+}
+
+
 /* print_result() checks to see if the game is over, and if so,
    prints the result. */
 
 void print_result()
 {
 	int i;
+	int captured_king;
+
+	/* Check if a King (Commoner K) has been captured */
+	captured_king = king_captured();
+	if (captured_king == LIGHT) {
+		printf("0-1 {White King captured}\n");
+		return;
+	}
+	else if (captured_king == DARK) {
+		printf("1-0 {Black King captured}\n");
+		return;
+	}
 
 	/* is there a legal move? */
 	for (i = 0; i < first_move[1]; ++i)
@@ -417,14 +457,8 @@ void print_result()
 			break;
 		}
 	if (i == first_move[1]) {
-		if (in_check(side)) {
-			if (side == LIGHT)
-				printf("0-1 {Black mates}\n");
-			else
-				printf("1-0 {White mates}\n");
-		}
-		else
-			printf("1/2-1/2 {Stalemate}\n");
+		/* No legal moves - stalemate (checkmate no longer exists) */
+		printf("1/2-1/2 {Stalemate}\n");
 	}
 	else if (reps() == 2)
 		printf("1/2-1/2 {Draw by repetition}\n");

@@ -54,5 +54,6 @@ int parse_move(char *s);
 char *move_str(move_bytes m);
 void print_board();
 void xboard();
+int king_captured();
 void print_result();
 void bench();
