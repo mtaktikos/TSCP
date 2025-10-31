@@ -166,8 +166,8 @@ char piece_char[8] = {
 
 
 /* the initial board state 
-   FEN: rgnbkqbnwr/pppppppppp/10/10/10/10/PPPPPPPPPP/RWNBQKBNGR w KQkq - 0 1
-   Rank 8 (0-9): r g n b k q b n w r
+   FEN: rgnbqkbnwr/pppppppppp/10/10/10/10/PPPPPPPPPP/RWNBQKBNGR w KQkq - 0 1
+   Rank 8 (0-9): r g n b q k b n w r
    Rank 7 (10-19): p p p p p p p p p p
    Ranks 6-3 (20-59): empty
    Rank 2 (60-69): P P P P P P P P P P
@@ -185,12 +185,12 @@ int init_color[80] = {
 };
 
 int init_piece[80] = {
-	3, 6, 1, 2, 5, 4, 2, 1, 7, 3,  /* rank 8: r g n b k q b n w r */
+	3, 6, 1, 2, 4, 6, 2, 1, 7, 3,  /* rank 8: r g n b q k b n w r (k at f8 is COMMONER) */
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  /* rank 7: pawns */
 	8, 8, 8, 8, 8, 8, 8, 8, 8, 8,  /* rank 6 */
 	8, 8, 8, 8, 8, 8, 8, 8, 8, 8,  /* rank 5 */
 	8, 8, 8, 8, 8, 8, 8, 8, 8, 8,  /* rank 4 */
 	8, 8, 8, 8, 8, 8, 8, 8, 8, 8,  /* rank 3 */
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  /* rank 2: pawns */
-	3, 7, 1, 2, 4, 5, 2, 1, 6, 3   /* rank 1: R W N B Q K B N G R */
+	3, 7, 1, 2, 4, 6, 2, 1, 6, 3   /* rank 1: R W N B Q K B N G R (K at f1 is COMMONER) */
 };

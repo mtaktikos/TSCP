@@ -94,17 +94,26 @@ void set_hash()
 
 
 /* in_check() returns TRUE if side s is in check and FALSE
-   otherwise. It just scans the board to find side s's king
-   and calls attack() to see if it's being attacked. */
+   otherwise. It checks if the castling Commoner (at F1 for LIGHT,
+   F8 for DARK) is being attacked. Also returns TRUE if the castling
+   Commoner is missing (captured), which means the side has lost. */
 
 BOOL in_check(int s)
 {
-	int i;
-
-	for (i = 0; i < 80; ++i)
-		if (piece[i] == KING && color[i] == s)
-			return attack(i, s ^ 1);
-	return TRUE;  /* shouldn't get here */
+	int king_sq;
+	
+	/* The castling Commoner is at F1 for LIGHT, F8 for DARK */
+	if (s == LIGHT)
+		king_sq = F1;
+	else
+		king_sq = F8;
+	
+	/* Check if the castling Commoner exists */
+	if (piece[king_sq] != COMMONER || color[king_sq] != s)
+		return TRUE;  /* Commoner is missing or captured - side has lost */
+	
+	/* Check if the Commoner is being attacked */
+	return attack(king_sq, s ^ 1);
 }
 
 
