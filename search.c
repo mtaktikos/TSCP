@@ -81,7 +81,7 @@ void think(int output)
 int search(int alpha, int beta, int depth)
 {
 	int i, j, x;
-	BOOL c, f;
+	BOOL f;
 
 	/* we're as deep as we want to be; call quiesce() to get
 	   a reasonable score and return it. */
@@ -108,10 +108,6 @@ int search(int alpha, int beta, int depth)
 	if (hply >= HIST_STACK - 1)
 		return eval();
 
-	/* are we in check? if so, we want to search deeper */
-	c = in_check(side);
-	if (c)
-		++depth;
 	gen();
 	if (follow_pv)  /* are we following the PV? */
 		sort_pv();
@@ -143,13 +139,9 @@ int search(int alpha, int beta, int depth)
 		}
 	}
 
-	/* no legal moves? then we're in checkmate or stalemate */
-	if (!f) {
-		if (c)
-			return -10000 + ply;
-		else
-			return 0;
-	}
+	/* no legal moves? then we're in stalemate */
+	if (!f)
+		return 0;
 
 	/* fifty move draw rule */
 	if (fifty >= 100)

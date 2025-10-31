@@ -96,7 +96,9 @@ void set_hash()
 
 /* in_check() returns TRUE if side s is in check and FALSE
    otherwise. It just scans the board to find side s's king
-   and calls attack() to see if it's being attacked. */
+   and calls attack() to see if it's being attacked. 
+   NOTE: This function is no longer used for move validation since
+   capturing the King ends the game immediately. */
 
 BOOL in_check(int s)
 {
@@ -516,7 +518,9 @@ void gen_promote(int from, int to, int bits)
 
 /* makemove() makes a move. If the move is illegal, it
    undoes whatever it did and returns FALSE. Otherwise, it
-   returns TRUE. */
+   returns TRUE. 
+   NOTE: King (Commoner K) check validation has been removed since
+   capturing the King ends the game immediately. */
 
 BOOL makemove(move_bytes m)
 {
@@ -526,33 +530,27 @@ BOOL makemove(move_bytes m)
 	if (m.bits & 2) {
 		int from, to;
 
-		if (in_check(side))
-			return FALSE;
 		switch (m.to) {
 		case 78:  /* I1 - white kingside castle: King f1->i1, Rook j1->h1 */
-			if (color[G1] != EMPTY || color[H1] != EMPTY || color[I1] != EMPTY ||
-				attack(G1, xside) || attack(H1, xside) || attack(I1, xside))
+			if (color[G1] != EMPTY || color[H1] != EMPTY || color[I1] != EMPTY)
 				return FALSE;
 			from = J1;
 			to = H1;
 			break;
 		case 72:  /* C1 - white queenside castle: King f1->c1, Rook a1->d1 */
-			if (color[B1] != EMPTY || color[C1] != EMPTY || color[D1] != EMPTY || color[E1] != EMPTY ||
-				attack(C1, xside) || attack(D1, xside) || attack(E1, xside))
+			if (color[B1] != EMPTY || color[C1] != EMPTY || color[D1] != EMPTY || color[E1] != EMPTY)
 				return FALSE;
 			from = A1;
 			to = D1;
 			break;
 		case 7:  /* H8 - black queenside castle: King f8->h8, Rook j8->i8 */
-			if (color[G8] != EMPTY || color[H8] != EMPTY || color[I8] != EMPTY ||
-				attack(G8, xside) || attack(H8, xside) || attack(I8, xside))
+			if (color[G8] != EMPTY || color[H8] != EMPTY || color[I8] != EMPTY)
 				return FALSE;
 			from = J8;
 			to = I8;
 			break;
 		case 1:  /* B8 - black kingside castle: King f8->b8, Rook a8->c8 */
-			if (color[B8] != EMPTY || color[C8] != EMPTY || color[D8] != EMPTY || color[E8] != EMPTY ||
-				attack(B8, xside) || attack(C8, xside) || attack(D8, xside))
+			if (color[B8] != EMPTY || color[C8] != EMPTY || color[D8] != EMPTY || color[E8] != EMPTY)
 				return FALSE;
 			from = A8;
 			to = C8;
@@ -615,15 +613,9 @@ BOOL makemove(move_bytes m)
 		}
 	}
 
-	/* switch sides and test for legality (if we can capture
-	   the other guy's king, it's an illegal position and
-	   we need to take the move back) */
+	/* switch sides */
 	side ^= 1;
 	xside ^= 1;
-	if (in_check(xside)) {
-		takeback();
-		return FALSE;
-	}
 	set_hash();
 	compute_transparent_squares();  /* recompute transparent squares after move */
 	return TRUE;
