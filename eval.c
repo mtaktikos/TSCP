@@ -23,7 +23,7 @@
 
 /* the values of the pieces */
 int piece_value[8] = {
-	100, 300, 380, 550, 980, 0, 250, 450
+	100, 300, 380, 550, 980, 20000, 250, 450
 };
 
 /* The "pcsq" arrays are piece/square tables. They're values
@@ -115,6 +115,24 @@ int eval()
 	int i;
 	int f;  /* file */
 	int score[2];  /* each side's score */
+	BOOL light_king_present = FALSE;
+	BOOL dark_king_present = FALSE;
+
+	/* Check if a King has been captured - this ends the game */
+	for (i = 0; i < 80; ++i) {
+		if (piece[i] == KING) {
+			if (color[i] == LIGHT)
+				light_king_present = TRUE;
+			else if (color[i] == DARK)
+				dark_king_present = TRUE;
+		}
+	}
+	
+	/* If a King is missing, return a huge score for the winner */
+	if (!light_king_present)
+		return (side == DARK) ? 20000 : -20000;  /* Light King captured, Dark wins */
+	if (!dark_king_present)
+		return (side == LIGHT) ? 20000 : -20000;  /* Dark King captured, Light wins */
 
 	/* this is the first pass: set up pawn_rank, piece_mat, and pawn_mat. */
 	for (i = 0; i < 12; ++i) {
