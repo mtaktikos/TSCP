@@ -282,7 +282,17 @@ void genPiece(int i)
 			else if (color[n] == xside && !is_amazon) {
 				/* Amazon cannot capture, other pieces can capture enemy pieces */
 				gen_push(i, n, 1);
-				break;
+				/* For sliders, check if this square is transparent */
+				if (is_slider && 
+				    ((side == LIGHT && whitetransparent[n]) || 
+				     (side == DARK && blacktransparent[n]))) {
+					/* Can pass through transparent square, continue sliding */
+					continue;
+				}
+				else {
+					/* Cannot pass through non-transparent square */
+					break;
+				}
 			}
 			else if (color[n] == side) {
 				/* Hit a friendly piece */
@@ -420,7 +430,17 @@ void gen_caps()
 						if (color[n] != EMPTY) {
 							if (color[n] == xside) {
 								gen_push(i, n, 1);
-								break;
+								/* For sliders, check if this square is transparent */
+								if (slide[piece[i]] && 
+								    ((side == LIGHT && whitetransparent[n]) || 
+								     (side == DARK && blacktransparent[n]))) {
+									/* Can pass through transparent square, continue sliding */
+									continue;
+								}
+								else {
+									/* Cannot pass through non-transparent square */
+									break;
+								}
 							}
 							else {
 								/* Hit a friendly piece */
