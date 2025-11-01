@@ -125,6 +125,14 @@ int eval()
 	if (captured_king == DARK)
 		return (side == LIGHT) ? KING_WIN_SCORE : -KING_WIN_SCORE;  /* Dark King captured, Light wins */
 
+	/* Check if either King is under attack (can be captured on the next move) */
+	/* If opponent's King is under attack, we can capture it - winning position */
+	if (in_check(xside))
+		return KING_WIN_SCORE;
+	/* If our King is under attack, opponent can capture it - losing position */
+	if (in_check(side))
+		return -KING_WIN_SCORE;
+
 	/* this is the first pass: set up pawn_rank, piece_mat, and pawn_mat. */
 	for (i = 0; i < 12; ++i) {
 		pawn_rank[LIGHT][i] = 0;
