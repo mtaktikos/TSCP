@@ -316,7 +316,8 @@ void genPiece(int i)
 			else if (color[n] == side) {
 				/* Hit a friendly piece */
 				/* For sliders, check if this square is transparent */
-				if (is_slider && 
+				/* Amazon cannot slide through transparent squares */
+				if (is_slider && !is_amazon &&
 				    ((side == LIGHT && whitetransparent[n]) || 
 				     (side == DARK && blacktransparent[n]))) {
 					/* Can pass through transparent square, continue sliding */
