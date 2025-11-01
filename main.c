@@ -119,6 +119,11 @@ int main()
 			bench();
 			continue;
 		}
+		if (!strcmp(s, "test")) {
+			computer_side = EMPTY;
+			test_pawn_transparent();
+			continue;
+		}
 		if (!strcmp(s, "bye")) {
 			printf("Share and enjoy!\n");
 			break;
@@ -136,6 +141,7 @@ int main()
 			printf("new - starts a new game\n");
 			printf("d - display the board\n");
 			printf("bench - run the built-in benchmark\n");
+			printf("test - run transparent pawn test\n");
 			printf("bye - exit the program\n");
 			printf("xboard - switch to XBoard mode\n");
 			printf("Enter moves in coordinate notation, e.g., e2e4, e7e8Q\n");
@@ -554,4 +560,141 @@ void bench()
 	init_board();
 	open_book();
 	gen();
+}
+
+
+/* test_pawn_transparent() tests if pawns can make double moves through transparent squares */
+
+void test_pawn_transparent()
+{
+	int i;
+	
+	printf("\n=== Testing Pawn Move Through Transparent Square ===\n\n");
+	
+	/* Save current board state */
+	int saved_color[80];
+	int saved_piece[80];
+	for (i = 0; i < 80; i++) {
+		saved_color[i] = color[i];
+		saved_piece[i] = piece[i];
+	}
+	
+	/* TEST 1: White pawn through white transparent square */
+	printf("TEST 1: White pawn through whitetransparent square\n");
+	printf("-----------------------------------------------\n");
+	
+	/* Place white Witch at f3 (index 55) */
+	color[55] = LIGHT;
+	piece[55] = AMAZON;
+	
+	/* Make sure there's a white pawn at f2 (index 65) */
+	color[65] = LIGHT;
+	piece[65] = PAWN;
+	
+	/* Clear f4 to make sure it's empty */
+	color[45] = EMPTY;
+	piece[45] = EMPTY;
+	
+	/* Recompute transparent squares */
+	compute_transparent_squares();
+	
+	printf("Setup: White Witch at f3, White pawn at f2, f4 is empty\n");
+	printf("f3 is whitetransparent: %d\n", whitetransparent[55]);
+	printf("f4 is empty: %d\n\n", color[45] == EMPTY);
+	
+	/* Set side to move */
+	side = LIGHT;
+	xside = DARK;
+	ply = 0;
+	
+	/* Generate moves */
+	first_move[0] = 0;
+	gen();
+	
+	/* Look for moves from f2 */
+	int found_f3 = 0, found_f4 = 0;
+	printf("Moves from f2 (index 65):\n");
+	for (i = first_move[0]; i < first_move[1]; i++) {
+		if (gen_dat[i].m.b.from == 65) {
+			int to = gen_dat[i].m.b.to;
+			printf("  Can move to index %d (%c%d)\n", 
+				   to, COL(to) + 'a', 8 - ROW(to));
+			if (to == 55) found_f3 = 1;
+			if (to == 45) found_f4 = 1;
+		}
+	}
+	
+	printf("\nTest 1 result:\n");
+	printf("  Can move f2-f3: %s\n", found_f3 ? "YES" : "NO (blocked by Witch)");
+	printf("  Can move f2-f4: %s\n", found_f4 ? "YES (CORRECT!)" : "NO (BUG!)");
+	
+	if (found_f4) {
+		printf("✓ TEST 1 PASSED\n\n");
+	} else {
+		printf("✗ TEST 1 FAILED\n\n");
+	}
+	
+	/* TEST 2: Black pawn through black transparent square */
+	printf("TEST 2: Black pawn through blacktransparent square\n");
+	printf("-----------------------------------------------\n");
+	
+	/* Place black Witch at f6 (index 25) */
+	color[25] = DARK;
+	piece[25] = AMAZON;
+	
+	/* Make sure there's a black pawn at f7 (index 15) */
+	color[15] = DARK;
+	piece[15] = PAWN;
+	
+	/* Clear f5 to make sure it's empty */
+	color[35] = EMPTY;
+	piece[35] = EMPTY;
+	
+	/* Recompute transparent squares */
+	compute_transparent_squares();
+	
+	printf("Setup: Black Witch at f6, Black pawn at f7, f5 is empty\n");
+	printf("f6 is blacktransparent: %d\n", blacktransparent[25]);
+	printf("f5 is empty: %d\n\n", color[35] == EMPTY);
+	
+	/* Set side to move */
+	side = DARK;
+	xside = LIGHT;
+	ply = 0;
+	
+	/* Generate moves */
+	first_move[0] = 0;
+	gen();
+	
+	/* Look for moves from f7 */
+	int found_f6 = 0, found_f5 = 0;
+	printf("Moves from f7 (index 15):\n");
+	for (i = first_move[0]; i < first_move[1]; i++) {
+		if (gen_dat[i].m.b.from == 15) {
+			int to = gen_dat[i].m.b.to;
+			printf("  Can move to index %d (%c%d)\n", 
+				   to, COL(to) + 'a', 8 - ROW(to));
+			if (to == 25) found_f6 = 1;
+			if (to == 35) found_f5 = 1;
+		}
+	}
+	
+	printf("\nTest 2 result:\n");
+	printf("  Can move f7-f6: %s\n", found_f6 ? "YES" : "NO (blocked by Witch)");
+	printf("  Can move f7-f5: %s\n", found_f5 ? "YES (CORRECT!)" : "NO (BUG!)");
+	
+	if (found_f5) {
+		printf("✓ TEST 2 PASSED\n\n");
+	} else {
+		printf("✗ TEST 2 FAILED\n\n");
+	}
+	
+	/* Restore board state */
+	for (i = 0; i < 80; i++) {
+		color[i] = saved_color[i];
+		piece[i] = saved_piece[i];
+	}
+	compute_transparent_squares();
+	
+	printf("=== All Tests Complete ===\n\n");
 }

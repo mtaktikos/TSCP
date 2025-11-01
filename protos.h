@@ -57,3 +57,4 @@ void xboard();
 int king_captured();
 void print_result();
 void bench();
+void test_pawn_transparent();
