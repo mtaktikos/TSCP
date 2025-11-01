@@ -151,7 +151,8 @@ BOOL attack(int sq, int s)
 							return TRUE;
 						if (color[n] != EMPTY) {
 							/* For sliders, check if this square is transparent */
-							if (slide[piece[i]] && 
+							/* Amazon cannot slide through transparent squares (but it's already excluded from attack) */
+							if (slide[piece[i]] && piece[i] != AMAZON &&
 							    ((s == LIGHT && whitetransparent[n]) || 
 							     (s == DARK && blacktransparent[n]))) {
 								/* Can pass through transparent square, continue sliding */
@@ -302,7 +303,8 @@ void genPiece(int i)
 				/* Amazon cannot capture, other pieces can capture enemy pieces */
 				gen_push(i, n, 1);
 				/* For sliders, check if this square is transparent */
-				if (is_slider && 
+				/* Amazon cannot slide through transparent squares */
+				if (is_slider && !is_amazon &&
 				    ((side == LIGHT && whitetransparent[n]) || 
 				     (side == DARK && blacktransparent[n]))) {
 					/* Can pass through transparent square, continue sliding */
@@ -316,7 +318,8 @@ void genPiece(int i)
 			else if (color[n] == side) {
 				/* Hit a friendly piece */
 				/* For sliders, check if this square is transparent */
-				if (is_slider && 
+				/* Amazon cannot slide through transparent squares */
+				if (is_slider && !is_amazon &&
 				    ((side == LIGHT && whitetransparent[n]) || 
 				     (side == DARK && blacktransparent[n]))) {
 					/* Can pass through transparent square, continue sliding */
@@ -450,7 +453,8 @@ void gen_caps()
 							if (color[n] == xside) {
 								gen_push(i, n, 1);
 								/* For sliders, check if this square is transparent */
-								if (slide[piece[i]] && 
+								/* Amazon cannot slide through transparent squares (but it's already excluded from gen_caps) */
+								if (slide[piece[i]] && piece[i] != AMAZON &&
 								    ((side == LIGHT && whitetransparent[n]) || 
 								     (side == DARK && blacktransparent[n]))) {
 									/* Can pass through transparent square, continue sliding */
@@ -464,7 +468,8 @@ void gen_caps()
 							else {
 								/* Hit a friendly piece */
 								/* For sliders, check if this square is transparent */
-								if (slide[piece[i]] && 
+								/* Amazon cannot slide through transparent squares (but it's already excluded from gen_caps) */
+								if (slide[piece[i]] && piece[i] != AMAZON &&
 								    ((side == LIGHT && whitetransparent[n]) || 
 								     (side == DARK && blacktransparent[n]))) {
 									/* Can pass through transparent square, continue sliding */
