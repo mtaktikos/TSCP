@@ -247,6 +247,10 @@ void genPawn(int i)
 			if (i >= 60 && color[i - 20] == EMPTY)
 				gen_push(i, i - 20, 24);
 		}
+		/* Allow double move even if square in front is whitetransparent */
+		else if (i >= 60 && whitetransparent[i - 10] && color[i - 20] == EMPTY) {
+			gen_push(i, i - 20, 24);
+		}
 	}
 	else {
 		if (COL(i) != 0 && color[i + 9] == LIGHT)
@@ -257,6 +261,10 @@ void genPawn(int i)
 			gen_push(i, i + 10, 16);
 			if (i <= 19 && color[i + 20] == EMPTY)
 				gen_push(i, i + 20, 24);
+		}
+		/* Allow double move even if square in front is blacktransparent */
+		else if (i <= 19 && blacktransparent[i + 10] && color[i + 20] == EMPTY) {
+			gen_push(i, i + 20, 24);
 		}
 	}
 }
