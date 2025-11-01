@@ -302,8 +302,7 @@ void genPiece(int i)
 				/* Amazon cannot capture, other pieces can capture enemy pieces */
 				gen_push(i, n, 1);
 				/* For sliders, check if this square is transparent */
-				/* Amazon cannot slide through transparent squares */
-				if (is_slider && !is_amazon &&
+				if (is_slider && 
 				    ((side == LIGHT && whitetransparent[n]) || 
 				     (side == DARK && blacktransparent[n]))) {
 					/* Can pass through transparent square, continue sliding */
