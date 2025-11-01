@@ -149,8 +149,19 @@ BOOL attack(int sq, int s)
 							break;
 						if (n == sq)
 							return TRUE;
-						if (color[n] != EMPTY)
-							break;
+						if (color[n] != EMPTY) {
+							/* For sliders, check if this square is transparent */
+							if (slide[piece[i]] && 
+							    ((s == LIGHT && whitetransparent[n]) || 
+							     (s == DARK && blacktransparent[n]))) {
+								/* Can pass through transparent square, continue sliding */
+								continue;
+							}
+							else {
+								/* Cannot pass through non-transparent square */
+								break;
+							}
+						}
 						if (!slide[piece[i]])
 							break;
 					}
