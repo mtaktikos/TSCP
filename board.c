@@ -30,6 +30,7 @@ void init_board()
 	ply = 0;
 	hply = 0;
 	set_hash();  /* init_hash() must be called before this function */
+	compute_transparent_squares();  /* compute transparent squares based on initial position */
 	first_move[0] = 0;
 }
 
@@ -95,7 +96,9 @@ void set_hash()
 
 /* in_check() returns TRUE if side s is in check and FALSE
    otherwise. It just scans the board to find side s's king
-   and calls attack() to see if it's being attacked. */
+   and calls attack() to see if it's being attacked. 
+   NOTE: This function is no longer used for move validation since
+   capturing the King ends the game immediately. */
 
 BOOL in_check(int s)
 {
@@ -104,7 +107,7 @@ BOOL in_check(int s)
 	for (i = 0; i < 80; ++i)
 		if (piece[i] == KING && color[i] == s)
 			return attack(i, s ^ 1);
-	return TRUE;  /* shouldn't get here */
+	return FALSE;  /* King not found - should not happen in normal game */
 }
 
 
@@ -156,6 +159,45 @@ BOOL attack(int sq, int s)
 		}
 	}
 	return FALSE;
+}
+
+
+/* compute_transparent_squares() computes which squares are transparent for each side
+   based on AMAZON (W) piece positions. The square containing an AMAZON and the 8 adjacent
+   squares are transparent for that side's sliders. */
+
+void compute_transparent_squares()
+{
+	int i, j;
+	
+	/* Initialize all squares as non-transparent */
+	for (i = 0; i < 80; ++i) {
+		whitetransparent[i] = FALSE;
+		blacktransparent[i] = FALSE;
+	}
+	
+	/* Find AMAZONs and mark transparent squares */
+	for (i = 0; i < 80; ++i) {
+		if (piece[i] == AMAZON) {
+			/* The AMAZON's square itself is transparent */
+			if (color[i] == LIGHT)
+				whitetransparent[i] = TRUE;
+			else
+				blacktransparent[i] = TRUE;
+			
+			/* Mark the 8 adjacent squares as transparent */
+			int adjacent_offsets[8] = { -13, -12, -11, -1, 1, 11, 12, 13 };
+			for (j = 0; j < 8; ++j) {
+				int n = mailbox[mailbox64[i] + adjacent_offsets[j]];
+				if (n != -1) {
+					if (color[i] == LIGHT)
+						whitetransparent[n] = TRUE;
+					else
+						blacktransparent[n] = TRUE;
+				}
+			}
+		}
+	}
 }
 
 
@@ -222,6 +264,7 @@ void genPawn(int i)
 void genPiece(int i)
 {
 	int is_amazon = (piece[i] == AMAZON);
+	BOOL is_slider = slide[piece[i]];
 	
 	/* Generate queen-like moves */
 	for (int j = 0; j < offsets[piece[i]]; ++j)
@@ -233,14 +276,39 @@ void genPiece(int i)
 				break;
 			if (color[n] == EMPTY) {
 				gen_push(i, n, 0);
-				if (!slide[piece[i]])
+				if (!is_slider)
 					break;
 			}
-			else {
-				if (color[n] == xside && !is_amazon)  /* Amazon cannot capture */
-					gen_push(i, n, 1);
-				break;
+			else if (color[n] == xside && !is_amazon) {
+				/* Amazon cannot capture, other pieces can capture enemy pieces */
+				gen_push(i, n, 1);
+				/* For sliders, check if this square is transparent */
+				if (is_slider && 
+				    ((side == LIGHT && whitetransparent[n]) || 
+				     (side == DARK && blacktransparent[n]))) {
+					/* Can pass through transparent square, continue sliding */
+					continue;
+				}
+				else {
+					/* Cannot pass through non-transparent square */
+					break;
+				}
 			}
+			else if (color[n] == side) {
+				/* Hit a friendly piece */
+				/* For sliders, check if this square is transparent */
+				if (is_slider && 
+				    ((side == LIGHT && whitetransparent[n]) || 
+				     (side == DARK && blacktransparent[n]))) {
+					/* Can pass through transparent square, continue sliding */
+					continue;
+				}
+				else {
+					/* Cannot pass through or capture friendly piece */
+					break;
+				}
+			}
+			/* Note: All color cases (EMPTY, xside, side) are handled above */
 		}
 	}
 	
@@ -360,9 +428,34 @@ void gen_caps()
 						if (n == -1)
 							break;
 						if (color[n] != EMPTY) {
-							if (color[n] == xside)
+							if (color[n] == xside) {
 								gen_push(i, n, 1);
-							break;
+								/* For sliders, check if this square is transparent */
+								if (slide[piece[i]] && 
+								    ((side == LIGHT && whitetransparent[n]) || 
+								     (side == DARK && blacktransparent[n]))) {
+									/* Can pass through transparent square, continue sliding */
+									continue;
+								}
+								else {
+									/* Cannot pass through non-transparent square */
+									break;
+								}
+							}
+							else {
+								/* Hit a friendly piece */
+								/* For sliders, check if this square is transparent */
+								if (slide[piece[i]] && 
+								    ((side == LIGHT && whitetransparent[n]) || 
+								     (side == DARK && blacktransparent[n]))) {
+									/* Can pass through transparent square, continue sliding */
+									continue;
+								}
+								else {
+									/* Cannot pass through friendly piece */
+									break;
+								}
+							}
 						}
 						if (!slide[piece[i]])
 							break;
@@ -445,7 +538,9 @@ void gen_promote(int from, int to, int bits)
 
 /* makemove() makes a move. If the move is illegal, it
    undoes whatever it did and returns FALSE. Otherwise, it
-   returns TRUE. */
+   returns TRUE. 
+   NOTE: King (Commoner K) check validation has been removed since
+   capturing the King ends the game immediately. */
 
 BOOL makemove(move_bytes m)
 {
@@ -455,33 +550,27 @@ BOOL makemove(move_bytes m)
 	if (m.bits & 2) {
 		int from, to;
 
-		if (in_check(side))
-			return FALSE;
 		switch (m.to) {
 		case 78:  /* I1 - white kingside castle: King f1->i1, Rook j1->h1 */
-			if (color[G1] != EMPTY || color[H1] != EMPTY || color[I1] != EMPTY ||
-				attack(G1, xside) || attack(H1, xside) || attack(I1, xside))
+			if (color[G1] != EMPTY || color[H1] != EMPTY || color[I1] != EMPTY)
 				return FALSE;
 			from = J1;
 			to = H1;
 			break;
 		case 72:  /* C1 - white queenside castle: King f1->c1, Rook a1->d1 */
-			if (color[B1] != EMPTY || color[C1] != EMPTY || color[D1] != EMPTY || color[E1] != EMPTY ||
-				attack(C1, xside) || attack(D1, xside) || attack(E1, xside))
+			if (color[B1] != EMPTY || color[C1] != EMPTY || color[D1] != EMPTY || color[E1] != EMPTY)
 				return FALSE;
 			from = A1;
 			to = D1;
 			break;
 		case 7:  /* H8 - black queenside castle: King f8->h8, Rook j8->i8 */
-			if (color[G8] != EMPTY || color[H8] != EMPTY || color[I8] != EMPTY ||
-				attack(G8, xside) || attack(H8, xside) || attack(I8, xside))
+			if (color[G8] != EMPTY || color[H8] != EMPTY || color[I8] != EMPTY)
 				return FALSE;
 			from = J8;
 			to = I8;
 			break;
 		case 1:  /* B8 - black kingside castle: King f8->b8, Rook a8->c8 */
-			if (color[B8] != EMPTY || color[C8] != EMPTY || color[D8] != EMPTY || color[E8] != EMPTY ||
-				attack(B8, xside) || attack(C8, xside) || attack(D8, xside))
+			if (color[B8] != EMPTY || color[C8] != EMPTY || color[D8] != EMPTY || color[E8] != EMPTY)
 				return FALSE;
 			from = A8;
 			to = C8;
@@ -544,16 +633,11 @@ BOOL makemove(move_bytes m)
 		}
 	}
 
-	/* switch sides and test for legality (if we can capture
-	   the other guy's king, it's an illegal position and
-	   we need to take the move back) */
+	/* switch sides */
 	side ^= 1;
 	xside ^= 1;
-	if (in_check(xside)) {
-		takeback();
-		return FALSE;
-	}
 	set_hash();
+	compute_transparent_squares();  /* recompute transparent squares after move */
 	return TRUE;
 }
 
@@ -626,4 +710,5 @@ void takeback()
 			piece[m.to - 10] = PAWN;
 		}
 	}
+	compute_transparent_squares();  /* recompute transparent squares after undoing move */
 }
