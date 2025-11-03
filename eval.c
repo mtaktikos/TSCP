@@ -475,10 +475,10 @@ int eval_mobility()
 	/* Restore state */
 	side = old_side;
 	xside = old_xside;
-	first_move[ply + 1] = saved_first_move;
+	first_move[ply] = saved_first_move;
 	
 	/* Return mobility difference doubled, relative to side to move */
-	if (side == LIGHT)
+	if (old_side == LIGHT)
 		return (mobility[LIGHT] - mobility[DARK]) * 2;
 	return (mobility[DARK] - mobility[LIGHT]) * 2;
 }
