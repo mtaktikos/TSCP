@@ -440,12 +440,14 @@ int eval_mobility()
 	int saved_first_move;
 	int saved_ply, saved_hply;
 	int old_side, old_xside;
+	int current_ply;
 	
 	mobility[LIGHT] = 0;
 	mobility[DARK] = 0;
 	
 	/* Save current state */
-	saved_first_move = first_move[ply];
+	current_ply = ply;
+	saved_first_move = first_move[current_ply];
 	saved_ply = ply;
 	saved_hply = hply;
 	old_side = side;
@@ -454,9 +456,10 @@ int eval_mobility()
 	/* Count mobility for LIGHT */
 	side = LIGHT;
 	xside = DARK;
+	ply = current_ply;  /* ensure ply is at saved value */
 	first_move[ply + 1] = first_move[ply];
 	gen();
-	for (i = first_move[ply]; i < first_move[ply + 1]; ++i) {
+	for (i = first_move[current_ply]; i < first_move[current_ply + 1]; ++i) {
 		if (makemove(gen_dat[i].m.b)) {
 			mobility[LIGHT]++;
 			takeback();
@@ -466,9 +469,10 @@ int eval_mobility()
 	/* Count mobility for DARK */
 	side = DARK;
 	xside = LIGHT;
+	ply = current_ply;  /* ensure ply is at saved value */
 	first_move[ply + 1] = first_move[ply];
 	gen();
-	for (i = first_move[ply]; i < first_move[ply + 1]; ++i) {
+	for (i = first_move[current_ply]; i < first_move[current_ply + 1]; ++i) {
 		if (makemove(gen_dat[i].m.b)) {
 			mobility[DARK]++;
 			takeback();
@@ -478,7 +482,7 @@ int eval_mobility()
 	/* Restore state */
 	side = old_side;
 	xside = old_xside;
-	first_move[ply] = saved_first_move;
+	first_move[current_ply] = saved_first_move;
 	ply = saved_ply;
 	hply = saved_hply;
 	
