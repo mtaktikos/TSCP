@@ -241,11 +241,14 @@ int eval()
 		}
 	}
 
+	/* Add mobility evaluation (doubled as requested) */
+	int mobility_score = eval_mobility();
+
 	/* the score[] array is set, now return the score relative
 	   to the side to move */
 	if (side == LIGHT)
-		return score[LIGHT] - score[DARK];
-	return score[DARK] - score[LIGHT];
+		return score[LIGHT] - score[DARK] + mobility_score;
+	return score[DARK] - score[LIGHT] + mobility_score;
 }
 
 int eval_light_pawn(int sq)
@@ -426,4 +429,65 @@ int eval_dkp(int f)
 		r -= 5;
 
 	return r;
+}
+
+/* eval_mobility() counts the number of legal moves for the current side
+   and returns the mobility score */
+int eval_mobility()
+{
+	int i;
+	int mobility[2];
+	int saved_first_move;
+	int saved_ply, saved_hply;
+	int old_side, old_xside;
+	int current_ply;
+	
+	mobility[LIGHT] = 0;
+	mobility[DARK] = 0;
+	
+	/* Save current state */
+	current_ply = ply;
+	saved_first_move = first_move[current_ply];
+	saved_ply = ply;
+	saved_hply = hply;
+	old_side = side;
+	old_xside = xside;
+	
+	/* Count mobility for LIGHT */
+	side = LIGHT;
+	xside = DARK;
+	ply = current_ply;  /* ensure ply is at saved value */
+	first_move[ply + 1] = first_move[ply];
+	gen();
+	for (i = first_move[current_ply]; i < first_move[current_ply + 1]; ++i) {
+		if (makemove(gen_dat[i].m.b)) {
+			mobility[LIGHT]++;
+			takeback();
+		}
+	}
+	
+	/* Count mobility for DARK */
+	side = DARK;
+	xside = LIGHT;
+	ply = current_ply;  /* ensure ply is at saved value */
+	first_move[ply + 1] = first_move[ply];
+	gen();
+	for (i = first_move[current_ply]; i < first_move[current_ply + 1]; ++i) {
+		if (makemove(gen_dat[i].m.b)) {
+			mobility[DARK]++;
+			takeback();
+		}
+	}
+	
+	/* Restore state */
+	side = old_side;
+	xside = old_xside;
+	first_move[current_ply] = saved_first_move;
+	ply = saved_ply;
+	hply = saved_hply;
+	
+	/* Return mobility difference doubled, relative to side to move */
+	if (old_side == LIGHT)
+		return (mobility[LIGHT] - mobility[DARK]) * 2;
+	return (mobility[DARK] - mobility[LIGHT]) * 2;
 }

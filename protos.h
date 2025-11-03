@@ -46,6 +46,7 @@ int eval_light_king(int sq);
 int eval_lkp(int f);
 int eval_dark_king(int sq);
 int eval_dkp(int f);
+int eval_mobility();
 
 /* main.c */
 int get_ms();
