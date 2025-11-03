@@ -438,6 +438,7 @@ int eval_mobility()
 	int i;
 	int mobility[2];
 	int saved_first_move;
+	int saved_ply, saved_hply;
 	int old_side, old_xside;
 	
 	mobility[LIGHT] = 0;
@@ -445,6 +446,8 @@ int eval_mobility()
 	
 	/* Save current state */
 	saved_first_move = first_move[ply];
+	saved_ply = ply;
+	saved_hply = hply;
 	old_side = side;
 	old_xside = xside;
 	
@@ -476,6 +479,8 @@ int eval_mobility()
 	side = old_side;
 	xside = old_xside;
 	first_move[ply] = saved_first_move;
+	ply = saved_ply;
+	hply = saved_hply;
 	
 	/* Return mobility difference doubled, relative to side to move */
 	if (old_side == LIGHT)
