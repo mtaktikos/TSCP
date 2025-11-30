@@ -7,6 +7,8 @@
 
 
 #include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 #include "defs.h"
 #include "data.h"
 #include "protos.h"
@@ -732,3 +734,292 @@ void takeback()
 	}
 	compute_transparent_squares();  /* recompute transparent squares after undoing move */
 }
+
+
+/* piece_to_fen_char() converts a piece/color to a FEN character */
+static char piece_to_fen_char(int p, int c)
+{
+	char ch;
+	switch (p) {
+		case PAWN:     ch = 'p'; break;
+		case KNIGHT:   ch = 'n'; break;
+		case BISHOP:   ch = 'b'; break;
+		case ROOK:     ch = 'r'; break;
+		case QUEEN:    ch = 'q'; break;
+		case KING:     ch = 'k'; break;
+		case COMMONER: ch = 'g'; break;
+		case AMAZON:   ch = 'w'; break;
+		default:       return '?';
+	}
+	if (c == LIGHT)
+		return ch - 'a' + 'A';  /* uppercase for white */
+	return ch;  /* lowercase for black */
+}
+
+
+/* fen_char_to_piece() converts a FEN character to piece type and color.
+   Returns 1 on success, 0 on failure. */
+static int fen_char_to_piece(char ch, int *p, int *c)
+{
+	if (ch >= 'A' && ch <= 'Z') {
+		*c = LIGHT;
+		ch = ch - 'A' + 'a';  /* convert to lowercase */
+	} else if (ch >= 'a' && ch <= 'z') {
+		*c = DARK;
+	} else {
+		return 0;
+	}
+	
+	switch (ch) {
+		case 'p': *p = PAWN; break;
+		case 'n': *p = KNIGHT; break;
+		case 'b': *p = BISHOP; break;
+		case 'r': *p = ROOK; break;
+		case 'q': *p = QUEEN; break;
+		case 'k': *p = KING; break;
+		case 'g': *p = COMMONER; break;
+		case 'w': *p = AMAZON; break;
+		default: return 0;
+	}
+	return 1;
+}
+
+
+/* set_fen() parses a FEN string and sets up the board position.
+   Returns 1 on success, 0 on failure.
+   FEN format for 10x8 board:
+   <piece_placement> <side_to_move> <castling> <en_passant> <halfmove_clock> <fullmove_number>
+   Example: rgnbkqbnwr/pppppppppp/10/10/10/10/PPPPPPPPPP/RWNBQKBNGR w KQkq - 0 1 */
+
+int set_fen(const char *fen)
+{
+	int i, sq, p_val, c_val;
+	const char *ptr;
+	char ch;
+	int empty_count;
+	
+	/* Use temporary storage to validate before applying */
+	int temp_color[80];
+	int temp_piece[80];
+	int temp_side, temp_xside, temp_castle, temp_ep, temp_fifty;
+	
+	/* Clear the temporary board */
+	for (i = 0; i < 80; ++i) {
+		temp_color[i] = EMPTY;
+		temp_piece[i] = EMPTY;
+	}
+	
+	ptr = fen;
+	sq = 0;  /* Start from a8 (index 0) */
+	
+	/* Parse piece placement */
+	while (*ptr && *ptr != ' ') {
+		ch = *ptr++;
+		
+		if (ch == '/') {
+			/* Move to next rank - check if current rank is complete (10 squares) */
+			if (sq % 10 != 0) {
+				return 0;  /* Invalid: rank not complete */
+			}
+			continue;
+		}
+		
+		if (ch >= '1' && ch <= '9') {
+			/* Empty squares: single digit 1-9 */
+			empty_count = ch - '0';
+			/* Check for two-digit number (10) */
+			if (*ptr == '0' && empty_count == 1) {
+				empty_count = 10;
+				ptr++;
+			}
+			sq += empty_count;
+			if (sq > 80) {
+				return 0;  /* Too many squares */
+			}
+			continue;
+		}
+		
+		/* Piece character */
+		if (!fen_char_to_piece(ch, &p_val, &c_val)) {
+			return 0;  /* Invalid piece character */
+		}
+		if (sq >= 80) {
+			return 0;  /* Too many squares */
+		}
+		temp_piece[sq] = p_val;
+		temp_color[sq] = c_val;
+		sq++;
+	}
+	
+	if (sq != 80) {
+		return 0;  /* Board not fully specified */
+	}
+	
+	/* Skip space and parse side to move */
+	if (*ptr != ' ') {
+		return 0;
+	}
+	ptr++;
+	
+	if (*ptr == 'w' || *ptr == 'W') {
+		temp_side = LIGHT;
+		temp_xside = DARK;
+	} else if (*ptr == 'b' || *ptr == 'B') {
+		temp_side = DARK;
+		temp_xside = LIGHT;
+	} else {
+		return 0;  /* Invalid side to move */
+	}
+	ptr++;
+	
+	/* Skip space and parse castling rights */
+	if (*ptr != ' ') {
+		return 0;
+	}
+	ptr++;
+	
+	temp_castle = 0;
+	if (*ptr == '-') {
+		ptr++;
+	} else {
+		while (*ptr && *ptr != ' ') {
+			switch (*ptr) {
+				case 'K': temp_castle |= 1; break;  /* White kingside */
+				case 'Q': temp_castle |= 2; break;  /* White queenside */
+				case 'k': temp_castle |= 4; break;  /* Black kingside */
+				case 'q': temp_castle |= 8; break;  /* Black queenside */
+				default: break;  /* Ignore invalid characters */
+			}
+			ptr++;
+		}
+	}
+	
+	/* Skip space and parse en passant square */
+	if (*ptr != ' ') {
+		return 0;
+	}
+	ptr++;
+	
+	if (*ptr == '-') {
+		temp_ep = -1;
+		ptr++;
+	} else {
+		/* Parse en passant square (e.g., "e3" or "e6") */
+		if (*ptr < 'a' || *ptr > 'j') {
+			return 0;  /* Invalid file */
+		}
+		int file = *ptr - 'a';
+		ptr++;
+		if (*ptr < '1' || *ptr > '8') {
+			return 0;  /* Invalid rank */
+		}
+		int rank = 8 - (*ptr - '0');  /* Convert '1'-'8' to 0-7 (inverted for our representation) */
+		ptr++;
+		temp_ep = rank * 10 + file;
+	}
+	
+	/* Parse halfmove clock (fifty move rule counter) - optional */
+	if (*ptr == ' ') {
+		ptr++;
+		temp_fifty = 0;
+		while (*ptr >= '0' && *ptr <= '9') {
+			temp_fifty = temp_fifty * 10 + (*ptr - '0');
+			ptr++;
+		}
+	} else {
+		temp_fifty = 0;
+	}
+	
+	/* Skip fullmove number (not used internally) */
+	
+	/* All validation passed - now apply the changes */
+	for (i = 0; i < 80; ++i) {
+		color[i] = temp_color[i];
+		piece[i] = temp_piece[i];
+	}
+	side = temp_side;
+	xside = temp_xside;
+	castle = temp_castle;
+	ep = temp_ep;
+	fifty = temp_fifty;
+	
+	/* Reset game state */
+	ply = 0;
+	hply = 0;
+	set_hash();
+	compute_transparent_squares();
+	first_move[0] = 0;
+	
+	return 1;  /* Success */
+}
+
+
+/* get_fen() generates a FEN string from the current position.
+   The caller must provide a buffer of at least 128 characters. */
+
+void get_fen(char *fen)
+{
+	int rank, file, sq, empty;
+	char *ptr = fen;
+	
+	/* Generate piece placement */
+	for (rank = 0; rank < 8; ++rank) {
+		empty = 0;
+		for (file = 0; file < 10; ++file) {
+			sq = rank * 10 + file;
+			if (color[sq] == EMPTY) {
+				empty++;
+			} else {
+				if (empty > 0) {
+					if (empty == 10) {
+						*ptr++ = '1';
+						*ptr++ = '0';
+					} else {
+						*ptr++ = '0' + empty;
+					}
+					empty = 0;
+				}
+				*ptr++ = piece_to_fen_char(piece[sq], color[sq]);
+			}
+		}
+		if (empty > 0) {
+			if (empty == 10) {
+				*ptr++ = '1';
+				*ptr++ = '0';
+			} else {
+				*ptr++ = '0' + empty;
+			}
+		}
+		if (rank < 7) {
+			*ptr++ = '/';
+		}
+	}
+	
+	/* Side to move */
+	*ptr++ = ' ';
+	*ptr++ = (side == LIGHT) ? 'w' : 'b';
+	
+	/* Castling rights */
+	*ptr++ = ' ';
+	if (castle == 0) {
+		*ptr++ = '-';
+	} else {
+		if (castle & 1) *ptr++ = 'K';
+		if (castle & 2) *ptr++ = 'Q';
+		if (castle & 4) *ptr++ = 'k';
+		if (castle & 8) *ptr++ = 'q';
+	}
+	
+	/* En passant square */
+	*ptr++ = ' ';
+	if (ep == -1) {
+		*ptr++ = '-';
+	} else {
+		*ptr++ = 'a' + COL(ep);
+		*ptr++ = '0' + (8 - ROW(ep));
+	}
+	
+	/* Halfmove clock and fullmove number */
+	sprintf(ptr, " %d %d", fifty, (hply / 2) + 1);
+}
+
