@@ -124,6 +124,84 @@ int main()
 			test_pawn_transparent();
 			continue;
 		}
+		if (!strcmp(s, "setboard")) {
+			/* Read the rest of the line as FEN string */
+			char fen[256];
+			if (fgets(fen, sizeof(fen), stdin) == NULL) {
+				printf("Error reading FEN string.\n");
+				continue;
+			}
+			/* Remove leading space if present */
+			char *fenptr = fen;
+			while (*fenptr == ' ') fenptr++;
+			/* Remove trailing newline */
+			size_t len = strlen(fenptr);
+			if (len > 0 && fenptr[len-1] == '\n')
+				fenptr[len-1] = '\0';
+			if (!set_fen(fenptr)) {
+				printf("Invalid FEN string.\n");
+			} else {
+				computer_side = EMPTY;
+				gen();
+				printf("Position set.\n");
+			}
+			continue;
+		}
+		if (!strcmp(s, "getfen")) {
+			char fen[256];
+			get_fen(fen);
+			printf("%s\n", fen);
+			continue;
+		}
+		if (!strcmp(s, "loadfen")) {
+			char filename[256];
+			if (scanf("%s", filename) != 1) {
+				printf("Error: specify filename.\n");
+				continue;
+			}
+			FILE *fp = fopen(filename, "r");
+			if (!fp) {
+				printf("Error: cannot open file '%s'.\n", filename);
+				continue;
+			}
+			char fen[256];
+			if (fgets(fen, sizeof(fen), fp) == NULL) {
+				printf("Error: cannot read FEN from file.\n");
+				fclose(fp);
+				continue;
+			}
+			fclose(fp);
+			/* Remove trailing newline */
+			size_t len = strlen(fen);
+			if (len > 0 && fen[len-1] == '\n')
+				fen[len-1] = '\0';
+			if (!set_fen(fen)) {
+				printf("Invalid FEN string in file.\n");
+			} else {
+				computer_side = EMPTY;
+				gen();
+				printf("Position loaded from '%s'.\n", filename);
+			}
+			continue;
+		}
+		if (!strcmp(s, "savefen")) {
+			char filename[256];
+			if (scanf("%s", filename) != 1) {
+				printf("Error: specify filename.\n");
+				continue;
+			}
+			FILE *fp = fopen(filename, "w");
+			if (!fp) {
+				printf("Error: cannot open file '%s' for writing.\n", filename);
+				continue;
+			}
+			char fen[256];
+			get_fen(fen);
+			fprintf(fp, "%s\n", fen);
+			fclose(fp);
+			printf("Position saved to '%s'.\n", filename);
+			continue;
+		}
 		if (!strcmp(s, "bye")) {
 			printf("Share and enjoy!\n");
 			break;
@@ -142,6 +220,10 @@ int main()
 			printf("d - display the board\n");
 			printf("bench - run the built-in benchmark\n");
 			printf("test - run transparent pawn test\n");
+			printf("setboard <fen> - set position from FEN string\n");
+			printf("getfen - display current position as FEN\n");
+			printf("loadfen <file> - load position from FEN file\n");
+			printf("savefen <file> - save position to FEN file\n");
 			printf("bye - exit the program\n");
 			printf("xboard - switch to XBoard mode\n");
 			printf("Enter moves in coordinate notation, e.g., e2e4, e7e8Q\n");
@@ -395,6 +477,20 @@ void xboard()
 		}
 		if (!strcmp(command, "nopost")) {
 			post = 0;
+			continue;
+		}
+		if (!strcmp(command, "setboard")) {
+			/* Parse FEN string from the rest of the line */
+			char *fenptr = line + 8;  /* Skip "setboard" */
+			while (*fenptr == ' ') fenptr++;  /* Skip whitespace */
+			/* Remove trailing newline */
+			size_t len = strlen(fenptr);
+			if (len > 0 && fenptr[len-1] == '\n')
+				fenptr[len-1] = '\0';
+			if (set_fen(fenptr)) {
+				computer_side = EMPTY;
+				gen();
+			}
 			continue;
 		}
 		m = parse_move(line);
