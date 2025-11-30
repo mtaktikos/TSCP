@@ -151,7 +151,6 @@ BOOL attack(int sq, int s)
 							return TRUE;
 						if (color[n] != EMPTY) {
 							/* For sliders, check if this square is transparent */
-							/* Amazon cannot slide through transparent squares */
 							if (slide[piece[i]] && piece[i] != AMAZON &&
 							    ((s == LIGHT && whitetransparent[n]) || 
 							     (s == DARK && blacktransparent[n]))) {
@@ -452,7 +451,6 @@ void gen_caps()
 							if (color[n] == xside) {
 								gen_push(i, n, 1);
 								/* For sliders, check if this square is transparent */
-								/* Amazon cannot slide through transparent squares */
 								if (slide[piece[i]] && piece[i] != AMAZON &&
 								    ((side == LIGHT && whitetransparent[n]) || 
 								     (side == DARK && blacktransparent[n]))) {
@@ -467,7 +465,6 @@ void gen_caps()
 							else {
 								/* Hit a friendly piece */
 								/* For sliders, check if this square is transparent */
-								/* Amazon cannot slide through transparent squares */
 								if (slide[piece[i]] && piece[i] != AMAZON &&
 								    ((side == LIGHT && whitetransparent[n]) || 
 								     (side == DARK && blacktransparent[n]))) {
